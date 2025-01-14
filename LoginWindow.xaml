@@ -30,9 +30,10 @@
                     </StackPanel>
                 </materialDesign:PopupBox>
 
-                <Image Margin="0 60 0 5" Height="100" Source="school_logo.png" />
-                <TextBlock Margin="0 25 0 5" HorizontalAlignment="Center" FontSize="28" FontWeight="Bold" Text="教学综合管理系统" />
-                <TextBlock FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center" Text="统一身份认证" />
+                <Image Margin="0 40 0 5" Height="100" Source="school_logo.png" />
+                <TextBlock Margin="0 25 0 5" HorizontalAlignment="Center" FontSize="28" FontWeight="Bold" Text="AcademiGo" />
+                <TextBlock Margin="0 2 0 5" HorizontalAlignment="Center" FontSize="28" FontWeight="Bold" Text="教学综合管理系统" />
+                <TextBlock Margin="0 10 0 5" FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center" Text="统一身份认证" />
 
                 <TextBox Margin="0 50 0 0" x:Name="txtUserName" Width="300" FontSize="18"
                          materialDesign:HintAssist.Hint="账号" BorderThickness="2"

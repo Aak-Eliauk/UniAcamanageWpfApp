@@ -30,15 +30,23 @@ namespace UniAcamanageWpfApp
             string username = txtUsername.Text.Trim();
             string email = txtEmail.Text.Trim();
             string password = txtPassword.Password.Trim();
+            string confirmPassword = txtConfirmPassword.Password.Trim(); // 获取确认密码
             string securityQuestion = (cbSecurityQuestion.SelectedItem as ComboBoxItem)?.Content.ToString();
             string securityAnswer = txtSecurityAnswer.Text.Trim();
 
             // 检查必填项
             if (string.IsNullOrEmpty(role) || string.IsNullOrEmpty(linkedID) || string.IsNullOrEmpty(username) ||
-                string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(securityQuestion) ||
-                string.IsNullOrEmpty(securityAnswer))
+                string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(confirmPassword) ||
+                string.IsNullOrEmpty(securityQuestion) || string.IsNullOrEmpty(securityAnswer))
             {
                 MessageBox.Show("请填写所有信息！");
+                return;
+            }
+
+            // 检查两次密码是否一致
+            if (password != confirmPassword)
+            {
+                MessageBox.Show("两次输入的密码不一致，请重新输入！");
                 return;
             }
 
@@ -76,8 +84,8 @@ namespace UniAcamanageWpfApp
                 {
                     connection.Open();
                     string query = @"
-                    INSERT INTO Users (Username, PasswordHash, Salt, Role, Email, SecurityQuestion, SecurityAnswerHash, LinkedID)
-                    VALUES (@Username, @PasswordHash, @Salt, @Role, @Email, @SecurityQuestion, @SecurityAnswerHash, @LinkedID)";
+                INSERT INTO Users (Username, PasswordHash, Salt, Role, Email, SecurityQuestion, SecurityAnswerHash, LinkedID)
+                VALUES (@Username, @PasswordHash, @Salt, @Role, @Email, @SecurityQuestion, @SecurityAnswerHash, @LinkedID)";
                     using (var command = new SqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@Username", username);
@@ -106,6 +114,7 @@ namespace UniAcamanageWpfApp
                 MessageBox.Show($"创建账户失败：{ex.Message}");
             }
         }
+
 
         // 验证邮箱地址是否有效
         private bool IsValidEmail(string email)

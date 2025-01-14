@@ -92,8 +92,16 @@ namespace UniAcamanageWpfApp
         // 忘记密码按钮事件
         private void ForgotPassword_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("忘记密码功能暂未实现！");
+            // 创建忘记密码窗口实例
+            ForgotPasswordStep1Window forgotPasswordWindow = new ForgotPasswordStep1Window();
+
+            // 显示忘记密码窗口
+            forgotPasswordWindow.Show();
+
+            // 隐藏当前登录窗口
+            this.Hide();
         }
+
 
         // 显示/隐藏密码的事件
         private void ShowPassword_Click(object sender, RoutedEventArgs e)
