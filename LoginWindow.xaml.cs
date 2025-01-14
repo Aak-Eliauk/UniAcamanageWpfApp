@@ -22,6 +22,12 @@ namespace UniAcamanageWpfApp
             InitializeComponent();
         }
 
+        // 新的构造函数，接收用户名参数
+        public LoginWindow(string username) : this()
+        {
+            txtUserName.Text = username; // 将用户名填入登录界面的用户名输入框
+        }
+
         // 切换主题的事件
         private void themeToggle_Click(object sender, RoutedEventArgs e)
         {
@@ -70,8 +76,18 @@ namespace UniAcamanageWpfApp
         // 注册按钮事件
         private void SignupBtn_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("注册功能暂未实现！");
+            SignupWindow signupWindow = new SignupWindow();
+            this.Hide(); // 隐藏登录窗口
+
+            bool? result = signupWindow.ShowDialog();
+            if (result == true) // 如果注册成功
+            {
+                txtUserName.Text = signupWindow.RegisteredUsername; // 自动填入注册的用户名
+            }
+
+            this.Show(); // 显示登录窗口
         }
+
 
         // 忘记密码按钮事件
         private void ForgotPassword_Click(object sender, RoutedEventArgs e)
