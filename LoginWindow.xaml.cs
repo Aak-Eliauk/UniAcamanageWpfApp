@@ -1,4 +1,8 @@
-﻿using System.Windows;
+﻿using System;
+using Microsoft.Data.SqlClient;
+using System.Security.Cryptography;
+using System.Text;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using MaterialDesignThemes.Wpf;
@@ -10,6 +14,8 @@ namespace UniAcamanageWpfApp
         private bool isPasswordVisible = false; // 密码是否可见
         public bool IsDarkTheme { get; set; }
         private readonly PaletteHelper paletteHelper = new PaletteHelper();
+
+        private const string ConnectionString = "Server=LAPTOP-9ALD8MJ8\\SQLSERVER;Database=UniAcademicDB;User Id=sa;Password=Aak995498;TrustServerCertificate=True;";
 
         public LoginWindow()
         {
@@ -45,9 +51,15 @@ namespace UniAcamanageWpfApp
             string username = txtUserName.Text.Trim();
             string password = txtPassword.Password.Trim();
 
-            if (username == "admin" && password == "password")
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
-                MessageBox.Show("登录成功！");
+                MessageBox.Show("请输入用户名和密码！");
+                return;
+            }
+
+            if (AuthenticateUser(username, password, out string role))
+            {
+                MessageBox.Show($"登录成功！当前角色为：{role}");
             }
             else
             {
@@ -58,51 +70,97 @@ namespace UniAcamanageWpfApp
         // 注册按钮事件
         private void SignupBtn_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("跳转到注册页面！");
+            MessageBox.Show("注册功能暂未实现！");
+        }
+
+        // 忘记密码按钮事件
+        private void ForgotPassword_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("忘记密码功能暂未实现！");
         }
 
         // 显示/隐藏密码的事件
         private void ShowPassword_Click(object sender, RoutedEventArgs e)
         {
-            // 找到触发事件的父级 Grid
             var buttonGrid = (sender as Button)?.Parent as Grid;
 
             if (buttonGrid != null)
             {
-                // 获取 Grid 内的 Image
                 var image = buttonGrid.Children[0] as Image;
 
                 if (isPasswordVisible)
                 {
-                    // 切换到隐藏密码状态
                     txtPassword.Password = txtPasswordVisible.Text;
                     txtPasswordVisible.Visibility = Visibility.Collapsed;
                     txtPassword.Visibility = Visibility.Visible;
                     isPasswordVisible = false;
 
-                    // 更改图标为睁眼图标
                     if (image != null)
                     {
-                        image.Source = new System.Windows.Media.Imaging.BitmapImage(new System.Uri("eye_icon.png", System.UriKind.Relative));
+                        image.Source = new System.Windows.Media.Imaging.BitmapImage(new Uri("eye_icon.png", UriKind.Relative));
                     }
                 }
                 else
                 {
-                    // 切换到显示密码状态
                     txtPasswordVisible.Text = txtPassword.Password;
                     txtPasswordVisible.Visibility = Visibility.Visible;
                     txtPassword.Visibility = Visibility.Collapsed;
                     isPasswordVisible = true;
 
-                    // 更改图标为闭眼图标
                     if (image != null)
                     {
-                        image.Source = new System.Windows.Media.Imaging.BitmapImage(new System.Uri("eye_icon_off.png", System.UriKind.Relative));
+                        image.Source = new System.Windows.Media.Imaging.BitmapImage(new Uri("eye_icon_off.png", UriKind.Relative));
                     }
                 }
             }
         }
 
+        // 用户认证
+        private bool AuthenticateUser(string input, string password, out string role)
+        {
+            role = string.Empty;
+
+            try
+            {
+                using (var connection = new SqlConnection(ConnectionString))
+                {
+                    connection.Open();
+                    string query = @"SELECT PasswordHash, Salt, Role FROM Users WHERE Username = @Input OR Email = @Input OR LinkedID = @Input";
+
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@Input", input);
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                string storedHash = reader["PasswordHash"].ToString();
+                                string salt = reader["Salt"].ToString();
+                                role = reader["Role"].ToString();
+                                string computedHash = ComputeHash(password, salt);
+                                return storedHash == computedHash;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"数据库访问出错: {ex.Message}");
+            }
+            return false;
+        }
+
+        // 计算哈希
+        private string ComputeHash(string input, string salt)
+        {
+            using (var sha256 = SHA256.Create())
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(input + salt);
+                byte[] hash = sha256.ComputeHash(bytes);
+                return Convert.ToBase64String(hash);
+            }
+        }
 
         // 窗口拖动支持
         protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
