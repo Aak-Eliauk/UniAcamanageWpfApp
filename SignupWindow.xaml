@@ -20,7 +20,7 @@
                 <DockPanel Margin="10" HorizontalAlignment="Stretch" Height="42">
                     <!-- 左侧 LOGO 和标题 -->
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Image Source="school_logo.png" Height="40" Width="40" />
+                        <Image Source="Resources/Images/school_logo.png" Height="40" Width="40" />
                         <TextBlock Text="AcademiGo" FontSize="20" FontWeight="Bold" Foreground="#333"
                                    VerticalAlignment="Center" Margin="10,0,0,0" />
                     </StackPanel>

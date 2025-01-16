@@ -121,7 +121,7 @@ namespace UniAcamanageWpfApp
 
                     if (image != null)
                     {
-                        image.Source = new System.Windows.Media.Imaging.BitmapImage(new Uri("eye_icon.png", UriKind.Relative));
+                        image.Source = new System.Windows.Media.Imaging.BitmapImage(new Uri("Resources/Images/eye_icon.png", UriKind.Relative));
                     }
                 }
                 else
@@ -133,7 +133,7 @@ namespace UniAcamanageWpfApp
 
                     if (image != null)
                     {
-                        image.Source = new System.Windows.Media.Imaging.BitmapImage(new Uri("eye_icon_off.png", UriKind.Relative));
+                        image.Source = new System.Windows.Media.Imaging.BitmapImage(new Uri("Resources/Images/eye_icon_off.png", UriKind.Relative));
                     }
                 }
             }
