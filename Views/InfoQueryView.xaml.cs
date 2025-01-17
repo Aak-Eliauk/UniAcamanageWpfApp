@@ -7,13 +7,13 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
 using System.Linq;
-using UniAcamanageWpfApp.Models;
+using System.Windows.Threading;
 
 namespace UniAcamanageWpfApp.Views
 {
     public partial class InfoQueryView : UserControl
     {
-        private static readonly string ConnectionString =
+        private readonly string ConnectionString =
             ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
 
         public InfoQueryView()
@@ -38,15 +38,12 @@ namespace UniAcamanageWpfApp.Views
 
                 // 加载数据
                 LoadStudentBasicInfo();
-                LoadSemesterComboBox();
-
-                // 默认加载当前学期的考试信息
+                LoadSemesterComboBoxes(); // 为所有需要学期选择的控件加载学期
                 LoadCurrentExams();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"页面加载出错: {ex.Message}");
-                MainGrid.Opacity = 1;
+                MessageBox.Show($"页面加载出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -70,145 +67,116 @@ namespace UniAcamanageWpfApp.Views
         {
             try
             {
-                ShowLoading();
                 string studentID = GlobalUserState.LinkedID;
                 if (string.IsNullOrEmpty(studentID))
                 {
+                    MessageBox.Show("未获取到学生信息！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
                 string query = @"
-                    SELECT s.StudentID,
-                           s.[Name] AS StudentName,
-                           s.Gender,
-                           s.YearOfAdmission,
-                           s.Major,
-                           s.Status,
-                           c.ClassName
-                    FROM Student s
-                    INNER JOIN Class c ON s.ClassID = c.ClassID
-                    WHERE s.StudentID = @studentID;
-                ";
+            SELECT s.StudentID,
+                   s.[Name],
+                   s.Gender,
+                   s.BirthDate,
+                   s.YearOfAdmission,
+                   s.Major,
+                   c.ClassName,
+                   s.Status
+            FROM Student s
+            INNER JOIN Class c ON s.ClassID = c.ClassID
+            WHERE s.StudentID = @studentID";
 
                 var dt = ExecuteQuery(query, new SqlParameter("@studentID", studentID));
                 if (dt.Rows.Count > 0)
                 {
                     DataRow row = dt.Rows[0];
-                    StudentIDTextBox.Text = row["StudentID"].ToString();
-                    NameTextBox.Text = row["StudentName"].ToString();
-                    GenderTextBox.Text = row["Gender"].ToString();
-                    YearOfAdmissionTextBox.Text = row["YearOfAdmission"].ToString();
-                    MajorTextBox.Text = row["Major"].ToString();
-                    ClassTextBox.Text = row["ClassName"].ToString();
-                    StatusTextBox.Text = row["Status"].ToString();
-
-                    // 加载当前学期课表
-                    LoadCurrentSemesterSchedule();
+                    txtStudentID.Text = row["StudentID"].ToString();
+                    txtName.Text = row["Name"].ToString();
+                    txtGender.Text = row["Gender"].ToString();
+                    txtYearOfAdmission.Text = row["YearOfAdmission"].ToString();
+                    txtMajor.Text = row["Major"].ToString();
+                    txtClass.Text = row["ClassName"].ToString();
+                    txtStatus.Text = row["Status"].ToString();
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"加载学生基本信息失败: {ex.Message}");
-            }
-            finally
-            {
-                HideLoading();
+                MessageBox.Show($"加载学生信息失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        private void LoadSemesterComboBox()
+
+        private void LoadSemesterComboBoxes()
         {
             try
             {
-                ShowLoading();
                 string query = @"
                     SELECT s.SemesterID,
                            s.SemesterName,
-                           ay.YearName
+                           ay.YearName,
+                           CASE 
+                                WHEN GETDATE() BETWEEN s.StartDate AND s.EndDate THEN 1 
+                                ELSE 0 
+                           END AS IsCurrent
                     FROM Semester s
                     INNER JOIN AcademicYear ay ON s.AcademicYearID = ay.AcademicYearID
-                    ORDER BY ay.StartDate DESC, s.StartDate DESC;
-                ";
+                    ORDER BY s.StartDate DESC";
 
                 var dt = ExecuteQuery(query);
-                var list = new List<SemesterItem>();
-                foreach (DataRow row in dt.Rows)
-                {
-                    list.Add(new SemesterItem
+                var semesterList = dt.AsEnumerable()
+                    .Select(row => new
                     {
-                        SemesterID = Convert.ToInt32(row["SemesterID"]),
-                        SemesterName = row["SemesterName"].ToString(),
-                        YearName = row["YearName"].ToString()
-                    });
-                }
+                        SemesterID = row.Field<int>("SemesterID"),
+                        DisplayName = $"{row.Field<string>("YearName")} {row.Field<string>("SemesterName")}",
+                        IsCurrent = row.Field<int>("IsCurrent") == 1
+                    })
+                    .ToList();
 
-                SemesterComboBox.ItemsSource = list;
+                // 设置个人课表的学期选择
+                SemesterComboBox.ItemsSource = semesterList;
                 SemesterComboBox.DisplayMemberPath = "DisplayName";
                 SemesterComboBox.SelectedValuePath = "SemesterID";
 
+                // 设置考试查询的学期选择
+                ExamSemesterComboBox.ItemsSource = new List<object>(semesterList);
+                ExamSemesterComboBox.DisplayMemberPath = "DisplayName";
+                ExamSemesterComboBox.SelectedValuePath = "SemesterID";
+
                 // 选择当前学期
-                int currentSemesterId = GetCurrentSemesterID();
-                if (currentSemesterId != -1)
+                var currentSemester = semesterList.FirstOrDefault(s => s.IsCurrent);
+                if (currentSemester != null)
                 {
-                    var currentSemester = list.FirstOrDefault(s => s.SemesterID == currentSemesterId);
-                    if (currentSemester != null)
-                    {
-                        SemesterComboBox.SelectedValue = currentSemester.SemesterID;
-                    }
+                    SemesterComboBox.SelectedValue = currentSemester.SemesterID;
+                    ExamSemesterComboBox.SelectedValue = currentSemester.SemesterID;
                 }
-                else if (list.Count > 0)
+                else if (semesterList.Any())
                 {
                     SemesterComboBox.SelectedIndex = 0;
+                    ExamSemesterComboBox.SelectedIndex = 0;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"加载学期列表失败: {ex.Message}");
-            }
-            finally
-            {
-                HideLoading();
-            }
-        }
-
-        private void LoadCurrentSemesterSchedule()
-        {
-            int currentSemesterId = GetCurrentSemesterID();
-            if (currentSemesterId != -1)
-            {
-                QueryPersonalSchedule(currentSemesterId);
+                MessageBox.Show($"加载学期信息失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         #endregion
 
-        #region 课表查询
-        private int GetCurrentSemesterID()
+        #region 个人课表查询
+        private void QueryPersonalSchedule(object sender, RoutedEventArgs e)
         {
-            string query = @"
-                SELECT TOP 1 SemesterID
-                FROM Semester
-                WHERE GETDATE() BETWEEN StartDate AND EndDate
-                ORDER BY StartDate DESC";
-
-            var dt = ExecuteQuery(query);
-            if (dt.Rows.Count > 0)
+            if (SemesterComboBox.SelectedValue == null)
             {
-                return Convert.ToInt32(dt.Rows[0]["SemesterID"]);
+                MessageBox.Show("请选择要查询的学期！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
-            return -1;
-        }
 
-        private void QueryPersonalSchedule(int semesterID)
-        {
             try
             {
                 ShowLoading();
-                string studentID = StudentIDTextBox.Text.Trim();
-                if (string.IsNullOrEmpty(studentID))
-                {
-                    MessageBox.Show("当前学生ID为空，无法查询个人课表！");
-                    return;
-                }
+                int semesterID = (int)SemesterComboBox.SelectedValue;
+                string studentID = GlobalUserState.LinkedID;
 
                 string query = @"
                     SELECT 
@@ -225,42 +193,34 @@ namespace UniAcamanageWpfApp.Views
                     LEFT JOIN TeacherCourse tc ON c.CourseID = tc.CourseID
                     LEFT JOIN Teacher t ON tc.TeacherID = t.TeacherID
                     WHERE sc.StudentID = @studentID
-                    AND c.SemesterID = @semesterID";
+                    AND c.SemesterID = @semesterID
+                    ORDER BY c.CourseCode";
 
-                var dt = ExecuteQuery(query,
+                var parameters = new[]
+                {
                     new SqlParameter("@studentID", studentID),
-                    new SqlParameter("@semesterID", semesterID));
+                    new SqlParameter("@semesterID", semesterID)
+                };
 
+                var dt = ExecuteQuery(query, parameters);
                 ScheduleDataGrid.ItemsSource = dt.DefaultView;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"查询课表失败: {ex.Message}");
+                MessageBox.Show($"查询课表失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
                 HideLoading();
             }
         }
-
-        private void QueryPersonalSchedule(object sender, RoutedEventArgs e)
-        {
-            if (SemesterComboBox.SelectedValue == null)
-            {
-                MessageBox.Show("请选择学期！");
-                return;
-            }
-
-            int semesterID = Convert.ToInt32(SemesterComboBox.SelectedValue);
-            QueryPersonalSchedule(semesterID);
-        }
         #endregion
 
         #region 课程查询
         private void CourseSearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            string keyword = CourseSearchTextBox.Text.Trim();
-            if (string.IsNullOrEmpty(keyword))
+            string searchText = CourseSearchTextBox.Text.Trim();
+            if (string.IsNullOrEmpty(searchText))
             {
                 CourseSearchResultListBox.Visibility = Visibility.Collapsed;
                 return;
@@ -269,33 +229,36 @@ namespace UniAcamanageWpfApp.Views
             try
             {
                 string query = @"
-                    SELECT TOP 10 
-                        c.CourseID,
+                    SELECT TOP 10
                         c.CourseCode,
                         c.CourseName,
                         t.Name as TeacherName
                     FROM Course c
                     LEFT JOIN TeacherCourse tc ON c.CourseID = tc.CourseID
                     LEFT JOIN Teacher t ON tc.TeacherID = t.TeacherID
-                    WHERE c.CourseCode LIKE @kw
-                    OR c.CourseName LIKE @kw
-                    ORDER BY c.CourseName";
+                    WHERE c.SemesterID = (
+                        SELECT TOP 1 SemesterID 
+                        FROM Semester 
+                        WHERE GETDATE() BETWEEN StartDate AND EndDate
+                    )
+                    AND (c.CourseCode LIKE @searchText 
+                         OR c.CourseName LIKE @searchText)
+                    ORDER BY c.CourseCode";
 
                 var dt = ExecuteQuery(query,
-                    new SqlParameter("@kw", $"%{keyword}%"));
+                    new SqlParameter("@searchText", $"%{searchText}%"));
 
-                var items = new List<string>();
-                foreach (DataRow row in dt.Rows)
+                if (dt.Rows.Count > 0)
                 {
-                    string code = row["CourseCode"].ToString();
-                    string name = row["CourseName"].ToString();
-                    string teacher = row["TeacherName"]?.ToString() ?? "未安排教师";
-                    items.Add($"{code} - {name} (教师: {teacher})");
+                    CourseSearchResultListBox.ItemsSource = dt.AsEnumerable()
+                        .Select(row => $"{row["CourseCode"]} - {row["CourseName"]} ({row["TeacherName"]})")
+                        .ToList();
+                    CourseSearchResultListBox.Visibility = Visibility.Visible;
                 }
-
-                CourseSearchResultListBox.ItemsSource = items;
-                CourseSearchResultListBox.Visibility = items.Any() ?
-                    Visibility.Visible : Visibility.Collapsed;
+                else
+                {
+                    CourseSearchResultListBox.Visibility = Visibility.Collapsed;
+                }
             }
             catch (Exception ex)
             {
@@ -311,12 +274,19 @@ namespace UniAcamanageWpfApp.Views
                 string courseCode = selected.Split('-')[0].Trim();
                 CourseSearchTextBox.Text = courseCode;
                 CourseSearchResultListBox.Visibility = Visibility.Collapsed;
-                QueryCourseSchedule(courseCode);
+                QueryCourseSchedule(null, null);
             }
         }
 
-        private void QueryCourseSchedule(string courseCode)
+        private void QueryCourseSchedule(object sender, RoutedEventArgs e)
         {
+            string courseCode = CourseSearchTextBox.Text.Trim();
+            if (string.IsNullOrEmpty(courseCode))
+            {
+                MessageBox.Show("请输入课程代码或名称！");
+                return;
+            }
+
             try
             {
                 ShowLoading();
@@ -335,42 +305,91 @@ namespace UniAcamanageWpfApp.Views
                     LEFT JOIN Classroom cr ON c.ClassroomID = cr.ClassroomID
                     LEFT JOIN TeacherCourse tc ON c.CourseID = tc.CourseID
                     LEFT JOIN Teacher t ON tc.TeacherID = t.TeacherID
-                    WHERE c.CourseCode = @courseCode";
+                    WHERE c.CourseCode LIKE @courseCode
+                    AND c.SemesterID = (
+                        SELECT TOP 1 SemesterID 
+                        FROM Semester 
+                        WHERE GETDATE() BETWEEN StartDate AND EndDate
+                    )";
 
                 var dt = ExecuteQuery(query,
-                    new SqlParameter("@courseCode", courseCode));
+                    new SqlParameter("@courseCode", $"%{courseCode}%"));
 
                 CourseScheduleDataGrid.ItemsSource = dt.DefaultView;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"查询课程信息失败: {ex.Message}");
+                MessageBox.Show($"查询课程失败: {ex.Message}");
             }
             finally
             {
                 HideLoading();
             }
         }
-
-        private void QueryCourseSchedule(object sender, RoutedEventArgs e)
-        {
-            string courseCode = CourseSearchTextBox.Text.Trim();
-            if (string.IsNullOrEmpty(courseCode))
-            {
-                MessageBox.Show("请输入或选择课程！");
-                return;
-            }
-            QueryCourseSchedule(courseCode);
-        }
         #endregion
 
         #region 教师课表查询
+        private void TeacherSearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            string searchText = TeacherIDTextBox.Text.Trim();
+            if (string.IsNullOrEmpty(searchText))
+            {
+                TeacherSearchResultListBox.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            try
+            {
+                string query = @"
+                    SELECT TOP 10
+                        TeacherID,
+                        Name,
+                        Title,
+                        DepartmentID
+                    FROM Teacher
+                    WHERE TeacherID LIKE @searchText 
+                          OR Name LIKE @searchText
+                    ORDER BY TeacherID";
+
+                var dt = ExecuteQuery(query,
+                    new SqlParameter("@searchText", $"%{searchText}%"));
+
+                if (dt.Rows.Count > 0)
+                {
+                    TeacherSearchResultListBox.ItemsSource = dt.AsEnumerable()
+                        .Select(row => $"{row["TeacherID"]} - {row["Name"]} ({row["Title"]})")
+                        .ToList();
+                    TeacherSearchResultListBox.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    TeacherSearchResultListBox.Visibility = Visibility.Collapsed;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"搜索教师时出错: {ex.Message}");
+            }
+        }
+
+        private void TeacherSearchResultListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (TeacherSearchResultListBox.SelectedItem != null)
+            {
+                string selected = TeacherSearchResultListBox.SelectedItem.ToString();
+                string teacherId = selected.Split('-')[0].Trim();
+                TeacherIDTextBox.Text = teacherId;
+                TeacherSearchResultListBox.Visibility = Visibility.Collapsed;
+                QueryTeacherSchedule(null, null);
+            }
+        }
+
         private void QueryTeacherSchedule(object sender, RoutedEventArgs e)
         {
-            string teacherID = TeacherIDTextBox.Text.Trim();
-            if (string.IsNullOrEmpty(teacherID))
+            string teacherSearch = TeacherIDTextBox.Text.Trim();
+            if (string.IsNullOrEmpty(teacherSearch))
             {
-                MessageBox.Show("请输入教师工号！");
+                MessageBox.Show("请输入教师工号或姓名！");
                 return;
             }
 
@@ -378,33 +397,30 @@ namespace UniAcamanageWpfApp.Views
             {
                 ShowLoading();
                 string query = @"
-            SELECT 
-                t.TeacherID,
-                t.Name as TeacherName,
-                c.CourseCode,
-                c.CourseName,
-                c.CourseType,
-                c.ScheduleTime,
-                cr.RoomNumber as Classroom,
-                (SELECT COUNT(*) FROM StudentCourse sc WHERE sc.CourseID = c.CourseID) as StudentCount,
-                c.Capacity
-            FROM TeacherCourse tc
-            INNER JOIN Teacher t ON tc.TeacherID = t.TeacherID
-            INNER JOIN Course c ON tc.CourseID = c.CourseID
-            LEFT JOIN Classroom cr ON c.ClassroomID = cr.ClassroomID
-            WHERE t.TeacherID = @teacherID";
+                    SELECT 
+                        t.TeacherID,
+                        t.Name as TeacherName,
+                        c.CourseCode,
+                        c.CourseName,
+                        c.ScheduleTime,
+                        cr.RoomNumber as Classroom,
+                        (SELECT COUNT(*) FROM StudentCourse sc WHERE sc.CourseID = c.CourseID) as StudentCount,
+                        c.Capacity
+                    FROM Teacher t
+                    INNER JOIN TeacherCourse tc ON t.TeacherID = tc.TeacherID
+                    INNER JOIN Course c ON tc.CourseID = c.CourseID
+                    LEFT JOIN Classroom cr ON c.ClassroomID = cr.ClassroomID
+                    WHERE (t.TeacherID LIKE @searchText OR t.Name LIKE @searchText)
+                    AND c.SemesterID = (
+                        SELECT TOP 1 SemesterID 
+                        FROM Semester 
+                        WHERE GETDATE() BETWEEN StartDate AND EndDate
+                    )";
 
                 var dt = ExecuteQuery(query,
-                    new SqlParameter("@teacherID", teacherID));
+                    new SqlParameter("@searchText", $"%{teacherSearch}%"));
 
-                if (dt.Rows.Count == 0)
-                {
-                    MessageBox.Show("未找到该教师的课表信息！");
-                }
-                else
-                {
-                    TeacherScheduleDataGrid.ItemsSource = dt.DefaultView;
-                }
+                TeacherScheduleDataGrid.ItemsSource = dt.DefaultView;
             }
             catch (Exception ex)
             {
@@ -423,11 +439,8 @@ namespace UniAcamanageWpfApp.Views
             try
             {
                 ShowLoading();
-                int currentSemesterId = GetCurrentSemesterID();
-
                 string query = @"
                     SELECT 
-                        cr.ClassroomID,
                         cr.RoomNumber,
                         cr.Floor,
                         cr.Capacity,
@@ -435,25 +448,24 @@ namespace UniAcamanageWpfApp.Views
                         CASE 
                             WHEN c.CourseID IS NULL THEN '空闲'
                             ELSE '占用'
-                        END as CurrentStatus,
+                        END AS CurrentStatus,
                         COALESCE(c.CourseName, '') as CurrentCourse,
-                        COALESCE(c.ScheduleTime, '') as ScheduleTime,
-                        COALESCE(t.Name, '') as TeacherName
+                        COALESCE(c.ScheduleTime, '') as ScheduleTime
                     FROM Classroom cr
-                    LEFT JOIN Course c ON cr.ClassroomID = c.ClassroomID 
-                        AND c.SemesterID = @semesterID
-                    LEFT JOIN TeacherCourse tc ON c.CourseID = tc.CourseID
-                    LEFT JOIN Teacher t ON tc.TeacherID = t.TeacherID
+                    LEFT JOIN Course c ON cr.ClassroomID = c.ClassroomID
+                        AND c.SemesterID = (
+                            SELECT TOP 1 SemesterID 
+                            FROM Semester 
+                            WHERE GETDATE() BETWEEN StartDate AND EndDate
+                        )
                     ORDER BY cr.Floor, cr.RoomNumber";
 
-                var dt = ExecuteQuery(query,
-                    new SqlParameter("@semesterID", currentSemesterId));
-
+                var dt = ExecuteQuery(query);
                 ClassroomDataGrid.ItemsSource = dt.DefaultView;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"查询教室出错: {ex.Message}");
+                MessageBox.Show($"查询教室使用情况失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -463,162 +475,140 @@ namespace UniAcamanageWpfApp.Views
         #endregion
 
         #region 考试信息查询
-        private void LoadCurrentExams()
-        {
-            try
-            {
-                ShowLoading();
-                string studentID = GlobalUserState.LinkedID;
-                int currentSemesterId = GetCurrentSemesterID();
-
-                if (string.IsNullOrEmpty(studentID) || currentSemesterId == -1)
-                {
-                    return;
-                }
-
-                string query = @"
-                    SELECT DISTINCT
-                        e.ExamID,
-                        c.CourseCode,
-                        c.CourseName,
-                        e.ExamDate,
-                        e.ExamLocation,
-                        e.Duration,
-                        e.ExamType,
-                        t.Name as InvigilatorName
-                    FROM Exam e
-                    INNER JOIN Course c ON e.CourseID = c.CourseID
-                    INNER JOIN StudentCourse sc ON c.CourseID = sc.CourseID
-                    INNER JOIN Teacher t ON e.InvigilatorID = t.TeacherID
-                    WHERE sc.StudentID = @studentID
-                    AND c.SemesterID = @semesterID
-                    AND (e.ClassID IS NULL OR e.ClassID = (
-                        SELECT ClassID FROM Student WHERE StudentID = @studentID
-                    ))
-                    ORDER BY e.ExamDate";
-
-                var dt = ExecuteQuery(query,
-                    new SqlParameter("@studentID", studentID),
-                    new SqlParameter("@semesterID", currentSemesterId));
-
-                ExamDataGrid.ItemsSource = dt.DefaultView;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"加载考试信息失败: {ex.Message}");
-            }
-            finally
-            {
-                HideLoading();
-            }
-        }
-
         private void QueryExam(object sender, RoutedEventArgs e)
         {
-            string studentID = GlobalUserState.LinkedID;
-            if (string.IsNullOrEmpty(studentID))
+            if (ExamSemesterComboBox.SelectedValue == null)
             {
-                MessageBox.Show("未获取到学生信息！");
+                MessageBox.Show("请选择要查询的学期！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             try
             {
                 ShowLoading();
+                int semesterID = (int)ExamSemesterComboBox.SelectedValue;
+                string studentID = GlobalUserState.LinkedID; // 获取当前登录学生ID
                 string courseCode = ExamCodeTextBox.Text.Trim();
-                string query;
-                SqlParameter[] parameters;
 
-                if (string.IsNullOrEmpty(courseCode))
+                string query = @"
+                    SELECT 
+                        c.CourseCode,
+                        c.CourseName,
+                        e.ExamDate,
+                        e.ExamLocation,
+                        e.Duration as '考试时长(分钟)',
+                        e.ExamType,
+                        t.Name as Invigilator,
+                        e.BatchNumber as '考试批次',
+                        CASE 
+                            WHEN e.ExamDate > GETDATE() THEN '未开始'
+                            WHEN e.ExamDate <= GETDATE() AND DATEADD(MINUTE, e.Duration, e.ExamDate) > GETDATE() THEN '进行中'
+                            ELSE '已结束'
+                        END as ExamStatus
+                    FROM Exam e
+                    INNER JOIN Course c ON e.CourseID = c.CourseID
+                    INNER JOIN StudentCourse sc ON c.CourseID = sc.CourseID
+                    LEFT JOIN Teacher t ON e.InvigilatorID = t.TeacherID
+                    WHERE sc.StudentID = @studentID
+                    AND c.SemesterID = @semesterID";
+
+                if (!string.IsNullOrEmpty(courseCode))
                 {
-                    // 如果未输入课程代码，显示所有考试
-                    query = @"
-                        SELECT DISTINCT
-                            e.ExamID,
-                            c.CourseCode,
-                            c.CourseName,
-                            e.ExamDate,
-                            e.ExamLocation,
-                            e.Duration,
-                            e.ExamType,
-                            t.Name as InvigilatorName
-                        FROM Exam e
-                        INNER JOIN Course c ON e.CourseID = c.CourseID
-                        INNER JOIN StudentCourse sc ON c.CourseID = sc.CourseID
-                        INNER JOIN Teacher t ON e.InvigilatorID = t.TeacherID
-                        WHERE sc.StudentID = @studentID
-                        ORDER BY e.ExamDate";
-
-                    parameters = new[] { new SqlParameter("@studentID", studentID) };
-                }
-                else
-                {
-                    // 查询特定课程的考试
-                    query = @"
-                        SELECT DISTINCT
-                            e.ExamID,
-                            c.CourseCode,
-                            c.CourseName,
-                            e.ExamDate,
-                            e.ExamLocation,
-                            e.Duration,
-                            e.ExamType,
-                            t.Name as InvigilatorName
-                        FROM Exam e
-                        INNER JOIN Course c ON e.CourseID = c.CourseID
-                        INNER JOIN StudentCourse sc ON c.CourseID = sc.CourseID
-                        INNER JOIN Teacher t ON e.InvigilatorID = t.TeacherID
-                        WHERE sc.StudentID = @studentID
-                        AND c.CourseCode LIKE @courseCode
-                        ORDER BY e.ExamDate";
-
-                    parameters = new[]
-                    {
-                        new SqlParameter("@studentID", studentID),
-                        new SqlParameter("@courseCode", $"%{courseCode}%")
-                    };
+                    query += " AND c.CourseCode LIKE @courseCode";
                 }
 
-                var dt = ExecuteQuery(query, parameters);
+                query += @" ORDER BY 
+                            CASE 
+                                WHEN e.ExamDate > GETDATE() THEN 1
+                                WHEN e.ExamDate <= GETDATE() AND DATEADD(MINUTE, e.Duration, e.ExamDate) > GETDATE() THEN 2
+                                ELSE 3
+                            END,
+                            e.ExamDate";
+
+                var parameters = new List<SqlParameter>
+                {
+                    new SqlParameter("@studentID", studentID),
+                    new SqlParameter("@semesterID", semesterID)
+                };
+
+                if (!string.IsNullOrEmpty(courseCode))
+                {
+                    parameters.Add(new SqlParameter("@courseCode", $"%{courseCode}%"));
+                }
+
+                var dt = ExecuteQuery(query, parameters.ToArray());
                 ExamDataGrid.ItemsSource = dt.DefaultView;
+
+                // 检查是否有即将到来的考试（24小时内）
+                var upcomingExams = dt.AsEnumerable()
+                    .Where(row =>
+                    {
+                        var examDate = row.Field<DateTime>("ExamDate");
+                        var timeUntilExam = examDate - DateTime.Now;
+                        return timeUntilExam > TimeSpan.Zero && timeUntilExam <= TimeSpan.FromHours(24);
+                    })
+                    .ToList();
+
+                if (upcomingExams.Any())
+                {
+                    var message = "您有以下即将到来的考试：\n\n";
+                    foreach (var exam in upcomingExams)
+                    {
+                        message += $"课程：{exam["CourseName"]}\n" +
+                                 $"时间：{((DateTime)exam["ExamDate"]).ToString("yyyy-MM-dd HH:mm")}\n" +
+                                 $"地点：{exam["ExamLocation"]}\n\n";
+                    }
+                    MessageBox.Show(message, "考试提醒", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"查询考试信息失败: {ex.Message}");
+                MessageBox.Show($"查询考试信息失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
                 HideLoading();
             }
         }
+
+        private void LoadCurrentExams()
+        {
+            // 在页面加载时自动显示当前学期的考试信息
+            if (ExamSemesterComboBox.SelectedValue != null)
+            {
+                QueryExam(null, null);
+            }
+        }
         #endregion
 
-        #region 辅助方法
+        #region 通用数据库操作
         private DataTable ExecuteQuery(string query, params SqlParameter[] parameters)
         {
-            DataTable dt = new DataTable();
-            try
+            using (SqlConnection conn = new SqlConnection(ConnectionString))
             {
-                using (var conn = new SqlConnection(ConnectionString))
+                using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
-                    conn.Open();
-                    using (var cmd = new SqlCommand(query, conn))
+                    if (parameters != null)
                     {
-                        if (parameters != null)
-                            cmd.Parameters.AddRange(parameters);
+                        cmd.Parameters.AddRange(parameters);
+                    }
 
-                        using (var adapter = new SqlDataAdapter(cmd))
+                    DataTable dt = new DataTable();
+                    try
+                    {
+                        conn.Open();
+                        using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
                         {
                             adapter.Fill(dt);
                         }
                     }
+                    catch (Exception)
+                    {
+                        throw;
+                    }
+                    return dt;
                 }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"数据库操作出错: {ex.Message}");
-            }
-            return dt;
         }
         #endregion
     }
