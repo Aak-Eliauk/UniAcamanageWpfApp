@@ -142,6 +142,10 @@ namespace UniAcamanageWpfApp
                         // 切换到 InfoQueryView
                         MainContentPresenter.Content = new InfoQueryView();
                         break;
+                    case "BtnSelectCourse":
+                        // 切换到 CourseSelectionView
+                        MainContentPresenter.Content = new CourseSelectionView();
+                        break;
                     // 其余的按钮
                     default:
                         MainContentPresenter.Content = new TextBlock

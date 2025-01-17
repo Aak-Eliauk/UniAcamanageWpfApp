@@ -135,6 +135,22 @@
     </UserControl.Resources>
 
     <Grid x:Name="MainGrid" Margin="20">
+        <!-- 加载指示器 -->
+        <materialDesign:Card x:Name="LoadingIndicator" 
+                        Visibility="Collapsed"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Panel.ZIndex="1000">
+            <StackPanel Margin="16">
+                <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
+                        Value="0"
+                        IsIndeterminate="True" />
+                <TextBlock Text="正在加载..."
+                      HorizontalAlignment="Center"
+                      Margin="0,8,0,0"/>
+            </StackPanel>
+        </materialDesign:Card>
+
         <TabControl Style="{StaticResource MaterialDesignTabControl}"
                     TabStripPlacement="Top"
                     Background="Transparent"
@@ -327,20 +343,18 @@
 
                                     <!-- 左侧统计信息 -->
                                     <StackPanel Grid.Column="0" 
-                                  Orientation="Horizontal">
-                                        <TextBlock Text="已选课程： "
-                                     VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding SelectedCourseCount}"
-                                     FontWeight="Bold"
-                                     Foreground="{StaticResource PrimaryBrush}"
-                                     VerticalAlignment="Center"/>
+            Orientation="Horizontal">
+                                        <TextBlock Text="已选课程： "/>
+                                        <TextBlock x:Name="TotalCoursesText"
+               Text="{Binding SelectedCourseCount}"
+               FontWeight="Bold"
+               Foreground="{StaticResource PrimaryBrush}"/>
                                         <TextBlock Text=" 门  总学分： "
-                                     VerticalAlignment="Center"
-                                     Margin="10,0"/>
-                                        <TextBlock Text="{Binding TotalCredits}"
-                                     FontWeight="Bold"
-                                     Foreground="{StaticResource PrimaryBrush}"
-                                     VerticalAlignment="Center"/>
+               Margin="10,0"/>
+                                        <TextBlock x:Name="TotalCreditsText"
+               Text="{Binding TotalCredits}"
+               FontWeight="Bold"
+               Foreground="{StaticResource PrimaryBrush}"/>
                                     </StackPanel>
 
                                     <!-- 右侧按钮 -->
@@ -470,13 +484,13 @@
                                             <ComboBoxItem Content="已满额"/>
                                         </ComboBox>
 
-                                        <!-- 搜索按钮 -->
                                         <Button Grid.Column="4"
-                                    Content="搜索"
-                                    Style="{StaticResource AnimatedButtonStyle}"
-                                    Margin="10,0,0,0"
-                                    Width="100"
-                                    Click="SearchCourses_Click"/>
+        Content="搜索"
+        Style="{StaticResource AnimatedButtonStyle}"
+        Margin="10,0,0,0"
+        Width="100"
+        x:Name="SearchCoursesButton"
+        Click="SearchCourses_Click"/>
                                     </Grid>
                                 </Grid>
 
@@ -499,17 +513,17 @@
                                                 <RowDefinition Height="*"/>
                                             </Grid.RowDefinitions>
 
-                                            <!-- 课程列表标题 -->
                                             <DockPanel Grid.Row="0" 
-                                         LastChildFill="False"
-                                         Margin="15,15,15,5">
+           LastChildFill="False"
+           Margin="15,15,15,5">
                                                 <TextBlock Text="可选课程列表" 
-                                             FontSize="16"
-                                             FontWeight="SemiBold"
-                                             DockPanel.Dock="Left"/>
-                                                <TextBlock Text="{Binding AvailableCourseCount, StringFormat='共找到 {0} 门课程'}"
-                                             Foreground="#666666"
-                                             DockPanel.Dock="Right"/>
+               FontSize="16"
+               FontWeight="SemiBold"
+               DockPanel.Dock="Left"/>
+                                                <TextBlock x:Name="AvailableCourseCountText"
+               Text="{Binding AvailableCourseCount, StringFormat='共找到 {0} 门课程'}"
+               Foreground="#666666"
+               DockPanel.Dock="Right"/>
                                             </DockPanel>
 
                                             <!-- 课程列表 -->
@@ -683,7 +697,7 @@
                                    Margin="0,10">
                                 <DataGrid x:Name="CourseSelectionResultGrid" 
                             Style="{StaticResource CommonDataGridStyle}"
-                            Height="283">
+                            Height="189">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="课程代码" Binding="{Binding CourseCode}" Width="100"/>
                                         <DataGridTextColumn Header="课程名称" Binding="{Binding CourseName}" Width="200"/>

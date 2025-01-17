@@ -155,8 +155,8 @@
                 <!-- 顶部栏 -->
                 <RowDefinition Height="60"/>
                 <!-- 主体 -->
-                <RowDefinition Height="217*"/>
-                <RowDefinition Height="228*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition/>
             </Grid.RowDefinitions>
 
             <!-- ================= 顶部栏(渐变) ================= -->
