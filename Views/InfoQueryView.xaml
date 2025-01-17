@@ -5,12 +5,33 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              mc:Ignorable="d"
-             d:DesignHeight="800"
+             d:DesignHeight="950"
              d:DesignWidth="1200"
              MinHeight="700"
-             MinWidth="1000">
+             MinWidth="800">
 
     <UserControl.Resources>
+        <!-- 颜色定义 -->
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#3A76D2"/>
+        <SolidColorBrush x:Key="SecondaryBrush" Color="#2B5CA6"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#007ACC"/>
+
+        <!-- Tab样式 -->
+        <Style x:Key="CustomTabStyle" TargetType="TabItem" BasedOn="{StaticResource MaterialDesignNavigationRailTabItem}">
+            <Setter Property="Width" Value="180"/>
+            <Setter Property="Height" Value="80"/>
+            <Setter Property="Margin" Value="5,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#666666"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}"/>
+                    <Setter Property="Background" Value="#F5F9FF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <!-- 卡片渐变动画 -->
         <Storyboard x:Key="FadeInStoryboard">
             <DoubleAnimation 
@@ -20,13 +41,16 @@
                 Duration="0:0:0.3"/>
         </Storyboard>
 
-        <!-- 通用按钮样式 -->
+        <!-- 按钮样式 -->
         <Style TargetType="Button" x:Key="AnimatedButtonStyle" 
                BasedOn="{StaticResource MaterialDesignRaisedButton}">
             <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Height" Value="45"/>
+            <Setter Property="FontSize" Value="16"/>
             <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="8"/>
-            <Setter Property="Background" Value="#2196F3"/>
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
             <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="RenderTransform">
                 <Setter.Value>
                     <ScaleTransform ScaleX="1" ScaleY="1"/>
@@ -62,69 +86,111 @@
             </Style.Triggers>
         </Style>
 
-        <!-- 通用DataGrid样式 -->
+        <!-- DataGrid样式 -->
         <Style x:Key="CommonDataGridStyle" TargetType="DataGrid">
             <Setter Property="AutoGenerateColumns" Value="False"/>
             <Setter Property="IsReadOnly" Value="True"/>
-            <Setter Property="CanUserAddRows" Value="False"/>
-            <Setter Property="CanUserDeleteRows" Value="False"/>
-            <Setter Property="CanUserReorderColumns" Value="True"/>
             <Setter Property="CanUserResizeRows" Value="False"/>
-            <Setter Property="CanUserSortColumns" Value="True"/>
-            <Setter Property="SelectionMode" Value="Single"/>
-            <Setter Property="SelectionUnit" Value="FullRow"/>
-            <Setter Property="GridLinesVisibility" Value="All"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesignDivider}"/>
+            <Setter Property="BorderBrush" Value="#DDDDDD"/>
             <Setter Property="Background" Value="White"/>
-            <Setter Property="RowHeaderWidth" Value="0"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Margin" Value="0,20,0,0"/>
-            <Setter Property="materialDesign:DataGridAssist.CellPadding" Value="13,8"/>
-            <Setter Property="materialDesign:DataGridAssist.ColumnHeaderPadding" Value="8"/>
+            <Setter Property="RowHeight" Value="35"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <!-- 添加以下滚动设置 -->
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+            <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/>
+            <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/>
+            <Setter Property="MaxHeight" Value="600"/>
         </Style>
 
-        <!-- 通用搜索框样式 -->
-        <Style x:Key="SearchBoxStyle" TargetType="TextBox">
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="Height" Value="45"/>
-            <Setter Property="Padding" Value="10,5"/>
-            <Setter Property="materialDesign:HintAssist.IsFloating" Value="True"/>
-            <Setter Property="materialDesign:TextFieldAssist.UnderlineBrush" Value="#2196F3"/>
-            <Setter Property="materialDesign:HintAssist.Foreground" Value="#2196F3"/>
-            <Setter Property="BorderThickness" Value="0,0,0,1"/>
-            <Setter Property="Background" Value="Transparent"/>
+        <!-- ComboBox样式 -->
+        <Style x:Key="CommonComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource MaterialDesignOutlinedComboBox}">
+            <Setter Property="Height" Value="56"/>
+            <Setter Property="Padding" Value="12,8,12,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="materialDesign:TextFieldAssist.TextFieldCornerRadius" Value="4"/>
+            <Setter Property="materialDesign:TextFieldAssist.UnderlineBrush" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="materialDesign:HintAssist.FloatingScale" Value="0.85"/>
+            <Setter Property="materialDesign:HintAssist.FloatingOffset" Value="0,-18"/>
+        </Style>
+
+        <!-- 搜索框样式 -->
+        <Style x:Key="SearchBoxStyle" TargetType="TextBox" BasedOn="{StaticResource MaterialDesignOutlinedTextBox}">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Height" Value="56"/>
+            <Setter Property="Padding" Value="12,8,12,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="materialDesign:TextFieldAssist.TextFieldCornerRadius" Value="4"/>
+            <Setter Property="materialDesign:TextFieldAssist.UnderlineBrush" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="materialDesign:HintAssist.Foreground" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="materialDesign:HintAssist.FloatingScale" Value="0.85"/>
+            <Setter Property="materialDesign:HintAssist.FloatingOffset" Value="0,-18"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+            <Setter Property="Background" Value="White"/>
         </Style>
     </UserControl.Resources>
 
     <Grid x:Name="MainGrid" Margin="20" Loaded="Grid_Loaded">
-        <TabControl Style="{StaticResource MaterialDesignNavigationRailTabControl}" 
-                    TabStripPlacement="Left"
-                    materialDesign:ColorZoneAssist.Mode="Standard">
+        <!-- 顶部Tab控件 -->
+        <TabControl Style="{StaticResource MaterialDesignTabControl}"
+                    TabStripPlacement="Top"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Margin="0,10,0,0">
+
+            <!-- Tab头部样式模板 -->
+            <TabControl.Resources>
+                <Style TargetType="TabPanel">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Margin" Value="0,0,0,20"/>
+                </Style>
+            </TabControl.Resources>
 
             <!-- 1) 基本信息查询 -->
-            <TabItem>
+            <TabItem Style="{StaticResource CustomTabStyle}">
                 <TabItem.Header>
                     <StackPanel>
-                        <materialDesign:PackIcon Kind="AccountCircle" Width="24" Height="24"/>
-                        <TextBlock Text="基本信息" TextAlignment="Center"/>
+                        <materialDesign:PackIcon Kind="AccountCircle" 
+                                             Width="24" Height="24" 
+                                             HorizontalAlignment="Center"
+                                             Foreground="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=Foreground}"/>
+                        <TextBlock Text="基本信息" 
+                               TextAlignment="Center"
+                               Margin="0,5,0,0"/>
                     </StackPanel>
                 </TabItem.Header>
 
+                <!-- 基本信息内容 -->
                 <Grid Margin="20">
-                    <materialDesign:Card Margin="10" Padding="20" Background="White" 
-                           BorderBrush="#D5D5D5" BorderThickness="1"
-                           materialDesign:ShadowAssist.ShadowDepth="Depth1">
+                    <materialDesign:Card Margin="10" 
+                                       Padding="30" 
+                                       Background="White"
+                                       materialDesign:ElevationAssist.Elevation="Dp1"
+                                       UniformCornerRadius="15">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel>
-                                <TextBlock Text="个人基本信息" 
-                             FontSize="28" FontWeight="Bold" 
-                             Margin="0,0,0,30" 
-                             HorizontalAlignment="Center"/>
+                                <DockPanel LastChildFill="False" Margin="0,0,0,30">
+                                    <TextBlock Text="个人基本信息" 
+                                             FontSize="28" 
+                                             FontWeight="Bold"
+                                             Foreground="#333333"
+                                             DockPanel.Dock="Left"/>
+                                    <TextBlock Text="{Binding QueryTime, StringFormat=更新时间：{0:yyyy-MM-dd HH:mm:ss}}"
+                                             FontSize="14"
+                                             Foreground="#757575"
+                                             DockPanel.Dock="Right"
+                                             VerticalAlignment="Bottom"/>
+                                </DockPanel>
 
                                 <!-- 信息展示区 -->
                                 <Grid Margin="20">
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="120"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
@@ -133,219 +199,231 @@
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
 
+                                    <!-- 左侧信息 -->
                                     <!-- 学号 -->
                                     <TextBlock Grid.Row="0" Grid.Column="0" 
-                                 Text="学号：" 
-                                 FontSize="18" 
-                                 VerticalAlignment="Center"
-                                 Margin="0,0,20,0"
-                                 Foreground="#424242"/>
+                                             Text="学号："
+                                             Style="{StaticResource MaterialDesignBody1TextBlock}"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,20,0"
+                                             Foreground="#424242"/>
                                     <TextBox Grid.Row="0" Grid.Column="1" 
-                                x:Name="txtStudentID" 
-                                IsReadOnly="True" 
-                                FontSize="18"
-                                Height="45"
-                                Margin="0,10"
-                                Background="#F5F5F5" 
-                                BorderBrush="#E0E0E0"
-                                materialDesign:TextFieldAssist.UnderlineBrush="#2196F3"/>
+                                            x:Name="txtStudentID"
+                                            IsReadOnly="True"
+                                            Style="{StaticResource MaterialDesignFilledTextBox}"
+                                            Height="45"
+                                            Margin="0,10,20,10"
+                                            materialDesign:TextFieldAssist.UnderlineBrush="{StaticResource PrimaryBrush}"/>
 
                                     <!-- 姓名 -->
-                                    <TextBlock Grid.Row="1" Grid.Column="0" 
-                                 Text="姓名：" 
-                                 FontSize="18" 
-                                 VerticalAlignment="Center"
-                                 Margin="0,0,20,0"
-                                 Foreground="#424242"/>
-                                    <TextBox Grid.Row="1" Grid.Column="1" 
-                                x:Name="txtName" 
-                                IsReadOnly="True" 
-                                FontSize="18"
-                                Height="45"
-                                Margin="0,10"
-                                Background="#F5F5F5" 
-                                BorderBrush="#E0E0E0"
-                                materialDesign:TextFieldAssist.UnderlineBrush="#2196F3"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="2" 
+                                             Text="姓名："
+                                             Style="{StaticResource MaterialDesignBody1TextBlock}"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,20,0"
+                                             Foreground="#424242"/>
+                                    <TextBox Grid.Row="0" Grid.Column="3" 
+                                            x:Name="txtName"
+                                            IsReadOnly="True"
+                                            Style="{StaticResource MaterialDesignFilledTextBox}"
+                                            Height="45"
+                                            Margin="0,10,0,10"
+                                            materialDesign:TextFieldAssist.UnderlineBrush="{StaticResource PrimaryBrush}"/>
 
                                     <!-- 性别 -->
-                                    <TextBlock Grid.Row="2" Grid.Column="0" 
-                                 Text="性别：" 
-                                 FontSize="18" 
-                                 VerticalAlignment="Center"
-                                 Margin="0,0,20,0"
-                                 Foreground="#424242"/>
-                                    <TextBox Grid.Row="2" Grid.Column="1" 
-                                x:Name="txtGender" 
-                                IsReadOnly="True" 
-                                FontSize="18"
-                                Height="45"
-                                Margin="0,10"
-                                Background="#F5F5F5" 
-                                BorderBrush="#E0E0E0"
-                                materialDesign:TextFieldAssist.UnderlineBrush="#2196F3"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="0" 
+                                             Text="性别："
+                                             Style="{StaticResource MaterialDesignBody1TextBlock}"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,20,0"
+                                             Foreground="#424242"/>
+                                    <TextBox Grid.Row="1" Grid.Column="1" 
+                                            x:Name="txtGender"
+                                            IsReadOnly="True"
+                                            Style="{StaticResource MaterialDesignFilledTextBox}"
+                                            Height="45"
+                                            Margin="0,10,20,10"
+                                            materialDesign:TextFieldAssist.UnderlineBrush="{StaticResource PrimaryBrush}"/>
 
                                     <!-- 入学年份 -->
-                                    <TextBlock Grid.Row="3" Grid.Column="0" 
-                                 Text="入学年份：" 
-                                 FontSize="18" 
-                                 VerticalAlignment="Center"
-                                 Margin="0,0,20,0"
-                                 Foreground="#424242"/>
-                                    <TextBox Grid.Row="3" Grid.Column="1" 
-                                x:Name="txtYearOfAdmission" 
-                                IsReadOnly="True" 
-                                FontSize="18"
-                                Height="45"
-                                Margin="0,10"
-                                Background="#F5F5F5" 
-                                BorderBrush="#E0E0E0"
-                                materialDesign:TextFieldAssist.UnderlineBrush="#2196F3"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="2" 
+                                             Text="入学年份："
+                                             Style="{StaticResource MaterialDesignBody1TextBlock}"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,20,0"
+                                             Foreground="#424242"/>
+                                    <TextBox Grid.Row="1" Grid.Column="3" 
+                                            x:Name="txtYearOfAdmission"
+                                            IsReadOnly="True"
+                                            Style="{StaticResource MaterialDesignFilledTextBox}"
+                                            Height="45"
+                                            Margin="0,10,0,10"
+                                            materialDesign:TextFieldAssist.UnderlineBrush="{StaticResource PrimaryBrush}"/>
 
                                     <!-- 专业 -->
-                                    <TextBlock Grid.Row="4" Grid.Column="0" 
-                                 Text="专业：" 
-                                 FontSize="18" 
-                                 VerticalAlignment="Center"
-                                 Margin="0,0,20,0"
-                                 Foreground="#424242"/>
-                                    <TextBox Grid.Row="4" Grid.Column="1" 
-                                x:Name="txtMajor" 
-                                IsReadOnly="True" 
-                                FontSize="18"
-                                Height="45"
-                                Margin="0,10"
-                                Background="#F5F5F5" 
-                                BorderBrush="#E0E0E0"
-                                materialDesign:TextFieldAssist.UnderlineBrush="#2196F3"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="0" 
+                                             Text="专业："
+                                             Style="{StaticResource MaterialDesignBody1TextBlock}"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,20,0"
+                                             Foreground="#424242"/>
+                                    <TextBox Grid.Row="2" Grid.Column="1" 
+                                            x:Name="txtMajor"
+                                            IsReadOnly="True"
+                                            Style="{StaticResource MaterialDesignFilledTextBox}"
+                                            Height="45"
+                                            Margin="0,10,20,10"
+                                            materialDesign:TextFieldAssist.UnderlineBrush="{StaticResource PrimaryBrush}"/>
 
                                     <!-- 班级 -->
-                                    <TextBlock Grid.Row="5" Grid.Column="0" 
-                                 Text="班级：" 
-                                 FontSize="18" 
-                                 VerticalAlignment="Center"
-                                 Margin="0,0,20,0"
-                                 Foreground="#424242"/>
-                                    <TextBox Grid.Row="5" Grid.Column="1" 
-                                x:Name="txtClass" 
-                                IsReadOnly="True" 
-                                FontSize="18"
-                                Height="45"
-                                Margin="0,10"
-                                Background="#F5F5F5" 
-                                BorderBrush="#E0E0E0"
-                                materialDesign:TextFieldAssist.UnderlineBrush="#2196F3"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="2" 
+                                             Text="班级："
+                                             Style="{StaticResource MaterialDesignBody1TextBlock}"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,20,0"
+                                             Foreground="#424242"/>
+                                    <TextBox Grid.Row="2" Grid.Column="3" 
+                                            x:Name="txtClass"
+                                            IsReadOnly="True"
+                                            Style="{StaticResource MaterialDesignFilledTextBox}"
+                                            Height="45"
+                                            Margin="0,10,0,10"
+                                            materialDesign:TextFieldAssist.UnderlineBrush="{StaticResource PrimaryBrush}"/>
 
                                     <!-- 学籍状态 -->
-                                    <TextBlock Grid.Row="6" Grid.Column="0" 
-                                 Text="学籍状态：" 
-                                 FontSize="18" 
-                                 VerticalAlignment="Center"
-                                 Margin="0,0,20,0"
-                                 Foreground="#424242"/>
-                                    <TextBox Grid.Row="6" Grid.Column="1" 
-                                x:Name="txtStatus" 
-                                IsReadOnly="True" 
-                                FontSize="18"
-                                Height="45"
-                                Margin="0,10"
-                                Background="#F5F5F5" 
-                                BorderBrush="#E0E0E0"
-                                materialDesign:TextFieldAssist.UnderlineBrush="#2196F3"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="0" 
+                                             Text="学籍状态："
+                                             Style="{StaticResource MaterialDesignBody1TextBlock}"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,20,0"
+                                             Foreground="#424242"/>
+                                    <TextBox Grid.Row="3" Grid.Column="1" 
+                                            x:Name="txtStatus"
+                                            IsReadOnly="True"
+                                            Style="{StaticResource MaterialDesignFilledTextBox}"
+                                            Height="45"
+                                            Margin="0,10,20,10"
+                                            materialDesign:TextFieldAssist.UnderlineBrush="{StaticResource PrimaryBrush}"/>
                                 </Grid>
-                                
                             </StackPanel>
                         </ScrollViewer>
                     </materialDesign:Card>
                 </Grid>
             </TabItem>
 
-            <!-- 2) 学生个人课表 Tab -->
-            <TabItem>
+            <!-- 2) 个人课表查询 Tab -->
+            <TabItem Style="{StaticResource CustomTabStyle}">
                 <TabItem.Header>
                     <StackPanel>
-                        <materialDesign:PackIcon Kind="Calendar" Width="24" Height="24"/>
-                        <TextBlock Text="个人课表" TextAlignment="Center"/>
+                        <materialDesign:PackIcon Kind="Calendar" 
+                                             Width="24" Height="24"
+                                             HorizontalAlignment="Center"
+                                             Foreground="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=Foreground}"/>
+                        <TextBlock Text="个人课表" 
+                               TextAlignment="Center"
+                               Margin="0,5,0,0"/>
                     </StackPanel>
                 </TabItem.Header>
 
                 <Grid Margin="20">
-                    <materialDesign:Card Margin="10" Padding="30"
-                                       materialDesign:ElevationAssist.Elevation="Dp2">
-                        <StackPanel>
+                    <materialDesign:Card Margin="10" 
+                                       Padding="30"
+                                       Background="White"
+                                       materialDesign:ElevationAssist.Elevation="Dp1"
+                                       UniformCornerRadius="15">
+                        <StackPanel Margin="0,-20,0,0">
                             <TextBlock Text="个人课表查询" 
-                                     FontSize="28" FontWeight="Bold" 
-                                     Margin="0,0,0,30"
-                                     HorizontalAlignment="Center"/>
+                                     FontSize="28" 
+                                     FontWeight="Bold"
+                                     Foreground="#333333"
+                                     HorizontalAlignment="Center"
+                                     Margin="0,0,0,30"/>
 
-                            <Grid Width="400" HorizontalAlignment="Center">
+                            <!-- 查询条件区域 -->
+                            <Grid Width="400" 
+                                  HorizontalAlignment="Center" 
+                                  Margin="0,0,0,30">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <!-- 学期选择区域 -->
+                                <!-- 学期选择 -->
                                 <StackPanel Grid.Row="0" Margin="0,0,0,20">
                                     <TextBlock Text="选择学期："
-                                             FontSize="16" 
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
                                              Margin="0,0,0,10"
                                              Foreground="#666666"/>
                                     <ComboBox x:Name="SemesterComboBox"
-                                            FontSize="16"
-                                            materialDesign:HintAssist.Hint="请选择要查询的学期"
                                             Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                            Margin="0,5"/>
+                                            materialDesign:HintAssist.Hint="请选择要查询的学期"
+                                            FontSize="12"
+                                            Height="45" SelectionChanged="SemesterComboBox_SelectionChanged"/>
                                 </StackPanel>
 
                                 <!-- 查询按钮 -->
                                 <Button Grid.Row="1"
-                                        Content="查询课表"
-                                        Style="{StaticResource AnimatedButtonStyle}"
-                                        Width="200" Height="45"
-                                        Margin="0,10"
-                                        Click="QueryPersonalSchedule"/>
+                                       Content="查询课表"
+                                       Style="{StaticResource AnimatedButtonStyle}"
+                                       Width="200"
+                                       Click="QueryPersonalSchedule"/>
                             </Grid>
 
                             <!-- 课表显示区域 -->
-                            <DataGrid x:Name="ScheduleDataGrid" 
-                                    Style="{StaticResource CommonDataGridStyle}"
-                                    Height="400">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="课程代码" Binding="{Binding CourseCode}" Width="100"/>
-                                    <DataGridTextColumn Header="课程名称" Binding="{Binding CourseName}" Width="200"/>
-                                    <DataGridTextColumn Header="课程类型" Binding="{Binding CourseType}" Width="100"/>
-                                    <DataGridTextColumn Header="学分" Binding="{Binding Credit}" Width="60"/>
-                                    <DataGridTextColumn Header="上课时间" Binding="{Binding ScheduleTime}" Width="150"/>
-                                    <DataGridTextColumn Header="教室" Binding="{Binding Classroom}" Width="100"/>
-                                    <DataGridTextColumn Header="任课教师" Binding="{Binding TeacherName}" Width="100"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
+                            <materialDesign:Card Background="White"
+                                               materialDesign:ElevationAssist.Elevation="Dp1"
+                                               UniformCornerRadius="8"
+                                               Margin="0,10">
+                                <DataGrid x:Name="ScheduleDataGrid" 
+                                        Style="{StaticResource CommonDataGridStyle}"
+                                        Height="400"
+                                        Margin="0">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="课程代码" Binding="{Binding CourseCode}" Width="100"/>
+                                        <DataGridTextColumn Header="课程名称" Binding="{Binding CourseName}" Width="200"/>
+                                        <DataGridTextColumn Header="课程类型" Binding="{Binding CourseType}" Width="100"/>
+                                        <DataGridTextColumn Header="学分" Binding="{Binding Credit}" Width="60"/>
+                                        <DataGridTextColumn Header="上课时间" Binding="{Binding ScheduleTime}" Width="150"/>
+                                        <DataGridTextColumn Header="教室" Binding="{Binding Classroom}" Width="100"/>
+                                        <DataGridTextColumn Header="任课教师" Binding="{Binding TeacherName}" Width="100"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </materialDesign:Card>
                         </StackPanel>
                     </materialDesign:Card>
                 </Grid>
             </TabItem>
 
-            <!-- 3) 课程课表查询 Tab -->
-            <TabItem>
+            <!-- 3) 课程查询 Tab -->
+            <TabItem Style="{StaticResource CustomTabStyle}">
                 <TabItem.Header>
                     <StackPanel>
-                        <materialDesign:PackIcon Kind="BookOpen" Width="24" Height="24"/>
-                        <TextBlock Text="课程查询" TextAlignment="Center"/>
+                        <materialDesign:PackIcon Kind="BookOpen" 
+                                             Width="24" Height="24"
+                                             HorizontalAlignment="Center"
+                                             Foreground="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=Foreground}"/>
+                        <TextBlock Text="课程查询" 
+                               TextAlignment="Center"
+                               Margin="0,5,0,0"/>
                     </StackPanel>
                 </TabItem.Header>
 
                 <Grid Margin="20">
-                    <materialDesign:Card Margin="10" Padding="30"
-                                       materialDesign:ElevationAssist.Elevation="Dp2">
-                        <StackPanel>
+                    <materialDesign:Card Margin="10" 
+                                       Padding="30"
+                                       Background="White"
+                                       materialDesign:ElevationAssist.Elevation="Dp1"
+                                       UniformCornerRadius="15">
+                        <StackPanel Margin="0,-20,0,0">
                             <TextBlock Text="课程信息查询" 
-                                     FontSize="28" FontWeight="Bold" 
-                                     Margin="0,0,0,30"
-                                     HorizontalAlignment="Center"/>
+                                     FontSize="28" 
+                                     FontWeight="Bold"
+                                     Foreground="#333333"
+                                     HorizontalAlignment="Center"
+                                     Margin="0,0,0,30"/>
 
                             <!-- 搜索区域 -->
                             <Grid Width="400" HorizontalAlignment="Center">
@@ -353,67 +431,106 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <TextBox Grid.Row="0"
+                                <!-- 搜索提示 -->
+                                <TextBlock Grid.Row="0"
+                                         Text="输入课程代码或课程名称："
+                                         FontSize="16"
+                                         FontWeight="SemiBold"
+                                         Margin="0,0,0,10"
+                                         Foreground="#666666"/>
+
+                                <!-- 搜索输入框 -->
+                                <TextBox Grid.Row="1"
                                         x:Name="CourseSearchTextBox"
-                                        Style="{StaticResource SearchBoxStyle}"
-                                        materialDesign:HintAssist.Hint="输入课程代码或名称进行搜索"
+                                        Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                        materialDesign:HintAssist.Hint="请输入课程代码或名称"
+                                        Height="45"
                                         TextChanged="CourseSearchTextBox_TextChanged"/>
 
-                                <ListBox Grid.Row="1"
-                                        x:Name="CourseSearchResultListBox"
-                                        MaxHeight="200"
-                                        Margin="0,5"
-                                        Visibility="Collapsed"
-                                        materialDesign:ElevationAssist.Elevation="Dp4"
-                                        SelectionChanged="CourseSearchResultListBox_SelectionChanged"/>
+                                <!-- 搜索结果列表 -->
+                                <ListBox Grid.Row="2"
+         x:Name="CourseSearchResultListBox"
+         MaxHeight="200"
+         Margin="0,5"
+         Visibility="Collapsed"
+         Background="White"
+         BorderThickness="1"
+         BorderBrush="#E0E0E0"
+         materialDesign:ElevationAssist.Elevation="Dp4"
+         Panel.ZIndex="1"
+         SelectionChanged="CourseSearchResultListBox_SelectionChanged">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Padding" Value="12,8"/>
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                </ListBox>
 
-                                <Button Grid.Row="2"
+                                <!-- 查询按钮 -->
+                                <Button Grid.Row="3"
                                        Content="查询课程"
                                        Style="{StaticResource AnimatedButtonStyle}"
-                                       Width="200" Height="45"
+                                       Width="200"
                                        Margin="0,20"
                                        Click="QueryCourseSchedule"/>
                             </Grid>
 
                             <!-- 课程信息显示 -->
-                            <DataGrid x:Name="CourseScheduleDataGrid" 
-                                    Style="{StaticResource CommonDataGridStyle}"
-                                    Height="400">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="课程代码" Binding="{Binding CourseCode}" Width="100"/>
-                                    <DataGridTextColumn Header="课程名称" Binding="{Binding CourseName}" Width="200"/>
-                                    <DataGridTextColumn Header="课程类型" Binding="{Binding CourseType}" Width="100"/>
-                                    <DataGridTextColumn Header="上课时间" Binding="{Binding ScheduleTime}" Width="150"/>
-                                    <DataGridTextColumn Header="教室" Binding="{Binding Classroom}" Width="100"/>
-                                    <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="80"/>
-                                    <DataGridTextColumn Header="课程描述" Binding="{Binding Description}" Width="*"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
+                            <materialDesign:Card Background="White"
+                                               materialDesign:ElevationAssist.Elevation="Dp1"
+                                               UniformCornerRadius="8"
+                                               Margin="0,10">
+                                <DataGrid x:Name="CourseScheduleDataGrid" 
+                                        Style="{StaticResource CommonDataGridStyle}"
+                                        Height="400"
+                                        Margin="0">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="课程代码" Binding="{Binding CourseCode}" Width="100"/>
+                                        <DataGridTextColumn Header="课程名称" Binding="{Binding CourseName}" Width="200"/>
+                                        <DataGridTextColumn Header="课程类型" Binding="{Binding CourseType}" Width="100"/>
+                                        <DataGridTextColumn Header="上课时间" Binding="{Binding ScheduleTime}" Width="150"/>
+                                        <DataGridTextColumn Header="教室" Binding="{Binding Classroom}" Width="100"/>
+                                        <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="80"/>
+                                        <DataGridTextColumn Header="课程描述" Binding="{Binding Description}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </materialDesign:Card>
                         </StackPanel>
                     </materialDesign:Card>
                 </Grid>
             </TabItem>
 
             <!-- 4) 教师课表查询 Tab -->
-            <TabItem>
+            <TabItem Style="{StaticResource CustomTabStyle}">
                 <TabItem.Header>
                     <StackPanel>
-                        <materialDesign:PackIcon Kind="Teacher" Width="24" Height="24"/>
-                        <!-- 改为 TeacherOutline -->
-                        <TextBlock Text="教师课表" TextAlignment="Center"/>
+                        <materialDesign:PackIcon Kind="Teacher" 
+                                             Width="24" Height="24"
+                                             HorizontalAlignment="Center"
+                                             Foreground="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=Foreground}"/>
+                        <TextBlock Text="教师课表" 
+                               TextAlignment="Center"
+                               Margin="0,5,0,0"/>
                     </StackPanel>
                 </TabItem.Header>
 
                 <Grid Margin="20">
-                    <materialDesign:Card Margin="10" Padding="30"
-                                       materialDesign:ElevationAssist.Elevation="Dp2">
-                        <StackPanel>
+                    <materialDesign:Card Margin="10" 
+                                       Padding="30"
+                                       Background="White"
+                                       materialDesign:ElevationAssist.Elevation="Dp1"
+                                       UniformCornerRadius="15">
+                        <StackPanel Margin="0,-20,0,0">
                             <TextBlock Text="教师课表查询" 
-                                     FontSize="28" FontWeight="Bold" 
-                                     Margin="0,0,0,30"
-                                     HorizontalAlignment="Center"/>
+                                     FontSize="28" 
+                                     FontWeight="Bold"
+                                     Foreground="#333333"
+                                     HorizontalAlignment="Center"
+                                     Margin="0,0,0,30"/>
 
                             <!-- 搜索区域 -->
                             <Grid Width="400" HorizontalAlignment="Center">
@@ -421,17 +538,27 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
+                                <!-- 搜索提示 -->
+                                <TextBlock Grid.Row="0"
+                                         Text="输入教工号或教师姓名："
+                                         FontSize="16"
+                                         FontWeight="SemiBold"
+                                         Margin="0,0,0,10"
+                                         Foreground="#666666"/>
+
                                 <!-- 搜索输入框 -->
-                                <TextBox Grid.Row="0"
+                                <TextBox Grid.Row="1"
                                         x:Name="TeacherIDTextBox"
-                                        Style="{StaticResource SearchBoxStyle}"
-                                        materialDesign:HintAssist.Hint="输入教师工号或姓名"
+                                        Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                        materialDesign:HintAssist.Hint="请输入教工号或姓名"
+                                        Height="45"
                                         TextChanged="TeacherSearchTextBox_TextChanged"/>
 
                                 <!-- 搜索结果列表 -->
-                                <ListBox Grid.Row="1"
+                                <ListBox Grid.Row="2"
                                         x:Name="TeacherSearchResultListBox"
                                         MaxHeight="200"
                                         Margin="0,5"
@@ -440,95 +567,209 @@
                                         SelectionChanged="TeacherSearchResultListBox_SelectionChanged"/>
 
                                 <!-- 查询按钮 -->
-                                <Button Grid.Row="2"
+                                <Button Grid.Row="3"
                                        Content="查询教师课表"
                                        Style="{StaticResource AnimatedButtonStyle}"
-                                       Width="200" Height="45"
+                                       Width="200"
                                        Margin="0,20"
                                        Click="QueryTeacherSchedule"/>
                             </Grid>
 
                             <!-- 教师课表显示 -->
-                            <DataGrid x:Name="TeacherScheduleDataGrid" 
-                                    Style="{StaticResource CommonDataGridStyle}"
-                                    Height="400">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="教师工号" Binding="{Binding TeacherID}" Width="100"/>
-                                    <DataGridTextColumn Header="教师姓名" Binding="{Binding TeacherName}" Width="100"/>
-                                    <DataGridTextColumn Header="课程代码" Binding="{Binding CourseCode}" Width="100"/>
-                                    <DataGridTextColumn Header="课程名称" Binding="{Binding CourseName}" Width="200"/>
-                                    <DataGridTextColumn Header="上课时间" Binding="{Binding ScheduleTime}" Width="150"/>
-                                    <DataGridTextColumn Header="教室" Binding="{Binding Classroom}" Width="100"/>
-                                    <DataGridTextColumn Header="选课人数" Binding="{Binding StudentCount}" Width="80"/>
-                                    <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="80"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
+                            <materialDesign:Card Background="White"
+                                               materialDesign:ElevationAssist.Elevation="Dp1"
+                                               UniformCornerRadius="8"
+                                               Margin="0,10">
+                                <DataGrid x:Name="TeacherScheduleDataGrid" 
+                                        Style="{StaticResource CommonDataGridStyle}"
+                                        Height="400"
+                                        Margin="0">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="教师工号" Binding="{Binding TeacherID}" Width="100"/>
+                                        <DataGridTextColumn Header="教师姓名" Binding="{Binding TeacherName}" Width="100"/>
+                                        <DataGridTextColumn Header="课程代码" Binding="{Binding CourseCode}" Width="100"/>
+                                        <DataGridTextColumn Header="课程名称" Binding="{Binding CourseName}" Width="200"/>
+                                        <DataGridTextColumn Header="上课时间" Binding="{Binding ScheduleTime}" Width="150"/>
+                                        <DataGridTextColumn Header="教室" Binding="{Binding Classroom}" Width="100"/>
+                                        <DataGridTextColumn Header="选课人数" Binding="{Binding StudentCount}" Width="80"/>
+                                        <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="80"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </materialDesign:Card>
                         </StackPanel>
                     </materialDesign:Card>
                 </Grid>
             </TabItem>
 
             <!-- 5) 教室查询 Tab -->
-            <TabItem>
+            <TabItem Style="{StaticResource CustomTabStyle}">
                 <TabItem.Header>
                     <StackPanel>
-                        <materialDesign:PackIcon Kind="School" Width="24" Height="24"/>
-                        <TextBlock Text="教室查询" TextAlignment="Center"/>
+                        <materialDesign:PackIcon Kind="School" 
+                                             Width="24" Height="24"
+                                             HorizontalAlignment="Center"
+                                             Foreground="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=Foreground}"/>
+                        <TextBlock Text="教室查询" 
+                               TextAlignment="Center"
+                               Margin="0,5,0,0"/>
                     </StackPanel>
                 </TabItem.Header>
 
                 <Grid Margin="20">
-                    <materialDesign:Card Margin="10" Padding="30"
-                                       materialDesign:ElevationAssist.Elevation="Dp2">
-                        <StackPanel>
-                            <TextBlock Text="教室使用情况查询" 
-                                     FontSize="28" FontWeight="Bold" 
-                                     Margin="0,0,0,30"
-                                     HorizontalAlignment="Center"/>
+                    <materialDesign:Card Margin="10" 
+                                       Padding="30"
+                                       Background="White"
+                                       materialDesign:ElevationAssist.Elevation="Dp1"
+                                       UniformCornerRadius="15">
+                        <StackPanel Margin="0,-20,0,0">
+                            <DockPanel LastChildFill="False" Margin="0,0,0,20">
+                                <TextBlock Text="教室使用情况查询" 
+                 FontSize="24" 
+                 FontWeight="Bold"
+                 Foreground="#333333"
+                 DockPanel.Dock="Left"/>
+                                <TextBlock Text="{Binding QueryTime, StringFormat=更新时间：{0:yyyy-MM-dd HH:mm:ss}}"
+                 FontSize="14"
+                 Foreground="#757575"
+                 DockPanel.Dock="Right"
+                 VerticalAlignment="Center"/>
+                            </DockPanel>
 
-                            <!-- 查询按钮 -->
-                            <Button Content="查询所有教室"
-                                    Style="{StaticResource AnimatedButtonStyle}"
-                                    Width="200" Height="45"
-                                    Margin="0,0,0,20"
-                                    Click="QueryClassroom"/>
+                            <!-- 查询条件区域 -->
+                            <Grid Width="800" HorizontalAlignment="Center">
+                                <Grid.RowDefinitions>
+                                    <!-- 添加行定义，一行放选择框，一行放按钮 -->
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- 选择框容器 -->
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 日期选择 - 左侧 -->
+                                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                        <TextBlock Text="选择查询日期："
+                     FontSize="16"
+                     FontWeight="SemiBold"
+                     Margin="0,0,0,10"
+                     Foreground="#666666"/>
+                                        <DatePicker x:Name="ClassroomDatePicker"
+                      Style="{StaticResource MaterialDesignOutlinedDatePicker}"
+                      materialDesign:HintAssist.Hint="选择日期"
+                      Height="56"
+                      Margin="0,0,0,20"/>
+                                    </StackPanel>
+
+                                    <!-- 时间段选择 - 右侧 -->
+                                    <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                        <TextBlock Text="选择时间段："
+                     FontSize="16"
+                     FontWeight="SemiBold"
+                     Margin="0,0,0,10"
+                     Foreground="#666666"/>
+                                        <ComboBox x:Name="ClassroomTimeSlotComboBox"
+                    Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                    materialDesign:HintAssist.Hint="选择时间段"
+                    Height="56"
+                    Margin="0,0,0,20">
+                                            <ComboBoxItem Content="全天"/>
+                                            <ComboBoxItem Content="上午（第1-4节）"/>
+                                            <ComboBoxItem Content="下午（第5-8节）"/>
+                                            <ComboBoxItem Content="晚上（第9-11节）"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- 查询按钮 -->
+                                <Button Grid.Row="1"
+           Content="查询教室"
+           Style="{StaticResource AnimatedButtonStyle}"
+           Width="200"
+           Height="45"
+           Margin="0,10,0,0"
+           HorizontalAlignment="Center"
+           Click="QueryClassroom"/>
+                            </Grid>
 
                             <!-- 教室信息显示 -->
-                            <DataGrid x:Name="ClassroomDataGrid" 
-                                    Style="{StaticResource CommonDataGridStyle}"
-                                    Height="500">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="教室编号" Binding="{Binding RoomNumber}" Width="100"/>
-                                    <DataGridTextColumn Header="楼层" Binding="{Binding Floor}" Width="80"/>
-                                    <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="80"/>
-                                    <DataGridTextColumn Header="位置" Binding="{Binding SpatialLocation}" Width="150"/>
-                                    <DataGridTextColumn Header="当前状态" Binding="{Binding CurrentStatus}" Width="100"/>
-                                    <DataGridTextColumn Header="当前课程" Binding="{Binding CurrentCourse}" Width="200"/>
-                                    <DataGridTextColumn Header="上课时间" Binding="{Binding ScheduleTime}" Width="150"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
+                            <materialDesign:Card Background="White"
+                                               materialDesign:ElevationAssist.Elevation="Dp1"
+                                               UniformCornerRadius="8"
+                                               Margin="0,10">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Auto" Margin="0,0,10,0" Height="343">
+                                    <DataGrid x:Name="ClassroomDataGrid" 
+                                        Style="{StaticResource CommonDataGridStyle}"
+                                        MinHeight="400"
+                                        MaxHeight="600"
+                                        Margin="0" Width="970" Height="299">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="教室编号" Binding="{Binding RoomNumber}" Width="100"/>
+                                            <DataGridTextColumn Header="楼层" Binding="{Binding Floor}" Width="80"/>
+                                            <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="80"/>
+                                            <DataGridTextColumn Header="位置" Binding="{Binding SpatialLocation}" Width="150"/>
+                                            <DataGridTextColumn Header="当前状态" Binding="{Binding CurrentStatus}" Width="100">
+                                                <DataGridTextColumn.CellStyle>
+                                                    <Style TargetType="DataGridCell">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding CurrentStatus}" Value="空闲">
+                                                                <Setter Property="Foreground" Value="#4CAF50"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding CurrentStatus}" Value="占用">
+                                                                <Setter Property="Foreground" Value="#F44336"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </DataGridTextColumn.CellStyle>
+                                            </DataGridTextColumn>
+                                            <DataGridTextColumn Header="当前课程" Binding="{Binding CurrentCourse}" Width="200"/>
+                                            <DataGridTextColumn Header="上课时间" Binding="{Binding ScheduleTime}" Width="150"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </ScrollViewer>
+                            </materialDesign:Card>
                         </StackPanel>
                     </materialDesign:Card>
                 </Grid>
             </TabItem>
 
             <!-- 6) 考试信息查询 Tab -->
-            <TabItem>
+            <TabItem Style="{StaticResource CustomTabStyle}">
                 <TabItem.Header>
                     <StackPanel>
-                        <materialDesign:PackIcon Kind="ClipboardText" Width="24" Height="24"/>
-                        <TextBlock Text="考试信息" TextAlignment="Center"/>
+                        <materialDesign:PackIcon Kind="ClipboardText" 
+                                             Width="24" Height="24"
+                                             HorizontalAlignment="Center"
+                                             Foreground="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=Foreground}"/>
+                        <TextBlock Text="考试信息" 
+                               TextAlignment="Center"
+                               Margin="0,5,0,0"/>
                     </StackPanel>
                 </TabItem.Header>
 
                 <Grid Margin="20">
-                    <materialDesign:Card Margin="10" Padding="30"
-                                       materialDesign:ElevationAssist.Elevation="Dp2">
-                        <StackPanel>
-                            <TextBlock Text="考试信息查询" 
-                                     FontSize="28" FontWeight="Bold" 
-                                     Margin="0,0,0,30"
-                                     HorizontalAlignment="Center"/>
+                    <materialDesign:Card Margin="10" 
+                                       Padding="30"
+                                       Background="White"
+                                       materialDesign:ElevationAssist.Elevation="Dp1"
+                                       UniformCornerRadius="15">
+                        <StackPanel Margin="0,-20,0,0">
+                            <DockPanel LastChildFill="False" Margin="0,0,0,30">
+                                <TextBlock Text="考试信息查询" 
+                                         FontSize="28" 
+                                         FontWeight="Bold"
+                                         Foreground="#333333"
+                                         DockPanel.Dock="Left"/>
+                                <TextBlock Text="{Binding QueryTime, StringFormat=更新时间：{0:yyyy-MM-dd HH:mm:ss}}"
+                                         FontSize="14"
+                                         Foreground="#757575"
+                                         DockPanel.Dock="Right"
+                                         VerticalAlignment="Bottom"/>
+                            </DockPanel>
 
                             <!-- 查询条件区域 -->
                             <Grid Width="400" HorizontalAlignment="Center">
@@ -536,51 +777,83 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
                                 <!-- 学期选择 -->
-                                <StackPanel Grid.Row="0" Margin="0,0,0,20">
+                                <StackPanel Grid.Row="0">
                                     <TextBlock Text="选择学期："
-                                             FontSize="16" 
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
                                              Margin="0,0,0,10"
                                              Foreground="#666666"/>
                                     <ComboBox x:Name="ExamSemesterComboBox"
-                                            FontSize="16"
-                                            materialDesign:HintAssist.Hint="请选择要查询的学期"
                                             Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                            Margin="0,5"/>
+                                            materialDesign:HintAssist.Hint="请选择要查询的学期"
+                                            Height="45"
+                                            Margin="0,0,0,20" SelectionChanged="ExamSemesterComboBox_SelectionChanged"/>
                                 </StackPanel>
 
-                                <!-- 课程代码输入（可选） -->
-                                <TextBox Grid.Row="1"
-                                        x:Name="ExamCodeTextBox"
-                                        Style="{StaticResource SearchBoxStyle}"
-                                        materialDesign:HintAssist.Hint="输入课程代码（可选）"
-                                        Margin="0,0,0,20"/>
+                                <!-- 课程代码输入 -->
+                                <StackPanel Grid.Row="1">
+                                    <TextBlock Text="输入课程代码（可选）："
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Margin="0,0,0,10"
+                                             Foreground="#666666"/>
+                                    <TextBox x:Name="ExamCodeTextBox"
+                                           Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                           materialDesign:HintAssist.Hint="请输入课程代码"
+                                           Height="45"
+                                           Margin="0,0,0,20"/>
+                                </StackPanel>
 
                                 <!-- 查询按钮 -->
                                 <Button Grid.Row="2"
                                        Content="查询考试信息"
                                        Style="{StaticResource AnimatedButtonStyle}"
-                                       Width="200" Height="45"
+                                       Width="200"
                                        Margin="0,0,0,20"
                                        Click="QueryExam"/>
                             </Grid>
 
                             <!-- 考试信息显示 -->
-                            <DataGrid x:Name="ExamDataGrid" 
-                                    Style="{StaticResource CommonDataGridStyle}"
-                                    Height="400">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="课程代码" Binding="{Binding CourseCode}" Width="100"/>
-                                    <DataGridTextColumn Header="课程名称" Binding="{Binding CourseName}" Width="200"/>
-                                    <DataGridTextColumn Header="考试时间" Binding="{Binding ExamDate}" Width="150"/>
-                                    <DataGridTextColumn Header="考试地点" Binding="{Binding ExamLocation}" Width="100"/>
-                                    <DataGridTextColumn Header="考试时长" Binding="{Binding Duration}" Width="80"/>
-                                    <DataGridTextColumn Header="考试类型" Binding="{Binding ExamType}" Width="100"/>
-                                    <DataGridTextColumn Header="监考教师" Binding="{Binding Invigilator}" Width="100"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
+                            <materialDesign:Card Background="White"
+                                               materialDesign:ElevationAssist.Elevation="Dp1"
+                                               UniformCornerRadius="8"
+                                               Margin="0,10">
+                                <DataGrid x:Name="ExamDataGrid" 
+                                        Style="{StaticResource CommonDataGridStyle}"
+                                        Height="400"
+                                        Margin="0">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="课程代码" Binding="{Binding CourseCode}" Width="100"/>
+                                        <DataGridTextColumn Header="课程名称" Binding="{Binding CourseName}" Width="200"/>
+                                        <DataGridTextColumn Header="考试时间" Binding="{Binding ExamDate}" Width="150"/>
+                                        <DataGridTextColumn Header="考试地点" Binding="{Binding ExamLocation}" Width="100"/>
+                                        <DataGridTextColumn Header="考试时长" Binding="{Binding Duration}" Width="80"/>
+                                        <DataGridTextColumn Header="考试类型" Binding="{Binding ExamType}" Width="100"/>
+                                        <DataGridTextColumn Header="监考教师" Binding="{Binding Invigilator}" Width="100"/>
+                                        <DataGridTextColumn Header="考试状态" Binding="{Binding ExamStatus}" Width="100">
+                                            <DataGridTextColumn.CellStyle>
+                                                <Style TargetType="DataGridCell">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ExamStatus}" Value="未开始">
+                                                            <Setter Property="Foreground" Value="#2196F3"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding ExamStatus}" Value="进行中">
+                                                            <Setter Property="Foreground" Value="#4CAF50"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding ExamStatus}" Value="已结束">
+                                                            <Setter Property="Foreground" Value="#9E9E9E"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </DataGridTextColumn.CellStyle>
+                                        </DataGridTextColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </materialDesign:Card>
                         </StackPanel>
                     </materialDesign:Card>
                 </Grid>
@@ -597,10 +870,12 @@
                 <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
                            Value="0"
                            IsIndeterminate="True" 
+                           Width="50"
+                           Height="50"
                            Margin="20"/>
                 <TextBlock Text="正在加载..."
                          FontSize="16"
-                         Margin="0,10,0,0"/>
+                         Margin="0,10,0,20"/>
             </StackPanel>
         </materialDesign:Card>
     </Grid>

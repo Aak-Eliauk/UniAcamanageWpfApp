@@ -8,17 +8,46 @@ using System.Windows.Controls;
 using System.Windows.Media.Animation;
 using System.Linq;
 using System.Windows.Threading;
+using System.ComponentModel;
 
 namespace UniAcamanageWpfApp.Views
 {
-    public partial class InfoQueryView : UserControl
+    public partial class InfoQueryView : UserControl, INotifyPropertyChanged
     {
         private readonly string ConnectionString =
             ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
 
+        #region Properties
+
+        private DateTime _queryTime;
+        public DateTime QueryTime
+        {
+            get => _queryTime;
+            set
+            {
+                _queryTime = value;
+                OnPropertyChanged(nameof(QueryTime));
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected virtual void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private void UpdateQueryTime()
+        {
+            QueryTime = DateTime.Now;
+        }
+
+        #endregion
+
         public InfoQueryView()
         {
             InitializeComponent();
+            DataContext = this;
+            QueryTime = DateTime.Now;
         }
 
         #region 加载控制
@@ -38,8 +67,9 @@ namespace UniAcamanageWpfApp.Views
 
                 // 加载数据
                 LoadStudentBasicInfo();
-                LoadSemesterComboBoxes(); // 为所有需要学期选择的控件加载学期
+                LoadSemesterComboBoxes();
                 LoadCurrentExams();
+                InitializeClassroomControls(); // 初始化教室查询控件
             }
             catch (Exception ex)
             {
@@ -51,11 +81,16 @@ namespace UniAcamanageWpfApp.Views
             }
         }
 
+        private void InitializeClassroomControls()
+        {
+            // 设置日期选择器默认值为当前日期
+            ClassroomDatePicker.SelectedDate = DateTime.Today;
+            ClassroomTimeSlotComboBox.SelectedIndex = 0;
+        }
         private void ShowLoading()
         {
             LoadingCard.Visibility = Visibility.Visible;
         }
-
         private void HideLoading()
         {
             LoadingCard.Visibility = Visibility.Collapsed;
@@ -327,6 +362,21 @@ namespace UniAcamanageWpfApp.Views
             }
         }
         #endregion
+        private void SemesterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                if (SemesterComboBox.SelectedValue != null)
+                {
+                    UpdateQueryTime(); // 更新查询时间
+                    QueryPersonalSchedule(sender, null); // 自动触发课表查询
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"切换学期时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
         #region 教师课表查询
         private void TeacherSearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -342,14 +392,15 @@ namespace UniAcamanageWpfApp.Views
             {
                 string query = @"
                     SELECT TOP 10
-                        TeacherID,
-                        Name,
-                        Title,
-                        DepartmentID
-                    FROM Teacher
-                    WHERE TeacherID LIKE @searchText 
-                          OR Name LIKE @searchText
-                    ORDER BY TeacherID";
+                        t.TeacherID,
+                        t.Name,
+                        t.Title,
+                        d.DepartmentName
+                    FROM Teacher t
+                    LEFT JOIN Department d ON t.DepartmentID = d.DepartmentID
+                    WHERE t.TeacherID LIKE @searchText 
+                          OR t.Name LIKE @searchText
+                    ORDER BY t.TeacherID";
 
                 var dt = ExecuteQuery(query,
                     new SqlParameter("@searchText", $"%{searchText}%"));
@@ -357,7 +408,7 @@ namespace UniAcamanageWpfApp.Views
                 if (dt.Rows.Count > 0)
                 {
                     TeacherSearchResultListBox.ItemsSource = dt.AsEnumerable()
-                        .Select(row => $"{row["TeacherID"]} - {row["Name"]} ({row["Title"]})")
+                        .Select(row => $"{row["TeacherID"]} - {row["Name"]} ({row["Title"]}) - {row["DepartmentName"]}")
                         .ToList();
                     TeacherSearchResultListBox.Visibility = Visibility.Visible;
                 }
@@ -369,18 +420,6 @@ namespace UniAcamanageWpfApp.Views
             catch (Exception ex)
             {
                 MessageBox.Show($"搜索教师时出错: {ex.Message}");
-            }
-        }
-
-        private void TeacherSearchResultListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (TeacherSearchResultListBox.SelectedItem != null)
-            {
-                string selected = TeacherSearchResultListBox.SelectedItem.ToString();
-                string teacherId = selected.Split('-')[0].Trim();
-                TeacherIDTextBox.Text = teacherId;
-                TeacherSearchResultListBox.Visibility = Visibility.Collapsed;
-                QueryTeacherSchedule(null, null);
             }
         }
 
@@ -396,6 +435,8 @@ namespace UniAcamanageWpfApp.Views
             try
             {
                 ShowLoading();
+                UpdateQueryTime(); // 更新查询时间
+
                 string query = @"
                     SELECT 
                         t.TeacherID,
@@ -415,7 +456,8 @@ namespace UniAcamanageWpfApp.Views
                         SELECT TOP 1 SemesterID 
                         FROM Semester 
                         WHERE GETDATE() BETWEEN StartDate AND EndDate
-                    )";
+                    )
+                    ORDER BY c.ScheduleTime";
 
                 var dt = ExecuteQuery(query,
                     new SqlParameter("@searchText", $"%{teacherSearch}%"));
@@ -433,13 +475,44 @@ namespace UniAcamanageWpfApp.Views
         }
         #endregion
 
+        private void TeacherSearchResultListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (TeacherSearchResultListBox.SelectedItem != null)
+            {
+                try
+                {
+                    string selected = TeacherSearchResultListBox.SelectedItem.ToString();
+                    string teacherId = selected.Split('-')[0].Trim(); // 提取教师ID
+                    TeacherIDTextBox.Text = teacherId;
+                    TeacherSearchResultListBox.Visibility = Visibility.Collapsed;
+
+                    // 更新查询时间
+                    UpdateQueryTime();
+
+                    // 自动触发查询
+                    QueryTeacherSchedule(null, null);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"选择教师时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
         #region 教室查询
         private void QueryClassroom(object sender, RoutedEventArgs e)
         {
             try
             {
                 ShowLoading();
-                string query = @"
+                UpdateQueryTime(); // 更新查询时间
+
+                DateTime queryDate = ClassroomDatePicker.SelectedDate ?? DateTime.Today;
+                string timeSlot = ((ComboBoxItem)ClassroomTimeSlotComboBox.SelectedItem)?.Content.ToString() ?? "全天";
+
+                string timeCondition = GetTimeCondition(timeSlot);
+
+                string query = $@"
                     SELECT 
                         cr.RoomNumber,
                         cr.Floor,
@@ -456,11 +529,12 @@ namespace UniAcamanageWpfApp.Views
                         AND c.SemesterID = (
                             SELECT TOP 1 SemesterID 
                             FROM Semester 
-                            WHERE GETDATE() BETWEEN StartDate AND EndDate
+                            WHERE @queryDate BETWEEN StartDate AND EndDate
                         )
+                        {timeCondition}
                     ORDER BY cr.Floor, cr.RoomNumber";
 
-                var dt = ExecuteQuery(query);
+                var dt = ExecuteQuery(query, new SqlParameter("@queryDate", queryDate));
                 ClassroomDataGrid.ItemsSource = dt.DefaultView;
             }
             catch (Exception ex)
@@ -471,6 +545,17 @@ namespace UniAcamanageWpfApp.Views
             {
                 HideLoading();
             }
+        }
+
+        private string GetTimeCondition(string timeSlot)
+        {
+            return timeSlot switch
+            {
+                "上午（第1-4节）" => "AND c.ScheduleTime LIKE '%1-%' OR c.ScheduleTime LIKE '%2-%' OR c.ScheduleTime LIKE '%3-%' OR c.ScheduleTime LIKE '%4-%'",
+                "下午（第5-8节）" => "AND c.ScheduleTime LIKE '%5-%' OR c.ScheduleTime LIKE '%6-%' OR c.ScheduleTime LIKE '%7-%' OR c.ScheduleTime LIKE '%8-%'",
+                "晚上（第9-11节）" => "AND c.ScheduleTime LIKE '%9-%' OR c.ScheduleTime LIKE '%10-%' OR c.ScheduleTime LIKE '%11-%'",
+                _ => "" // 全天
+            };
         }
         #endregion
 
@@ -581,6 +666,22 @@ namespace UniAcamanageWpfApp.Views
         }
         #endregion
 
+        private void ExamSemesterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                if (ExamSemesterComboBox.SelectedValue != null)
+                {
+                    UpdateQueryTime(); // 更新查询时间
+                    QueryExam(sender, null); // 自动触发考试信息查询
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"切换学期时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         #region 通用数据库操作
         private DataTable ExecuteQuery(string query, params SqlParameter[] parameters)
         {
@@ -609,6 +710,14 @@ namespace UniAcamanageWpfApp.Views
                     return dt;
                 }
             }
+        }
+        #endregion
+
+        #region 查询时间更新
+        private void UpdateQueryTimeForAll()
+        {
+            // 在每次查询操作时调用此方法
+            UpdateQueryTime();
         }
         #endregion
     }
