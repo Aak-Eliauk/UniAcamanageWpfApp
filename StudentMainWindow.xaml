@@ -155,7 +155,8 @@
                 <!-- 顶部栏 -->
                 <RowDefinition Height="60"/>
                 <!-- 主体 -->
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="217*"/>
+                <RowDefinition Height="228*"/>
             </Grid.RowDefinitions>
 
             <!-- ================= 顶部栏(渐变) ================= -->
@@ -237,7 +238,7 @@
             </Border>
 
             <!-- ================ 主体：左侧导航 + 右侧内容 ================ -->
-            <Grid Grid.Row="1">
+            <Grid Grid.Row="1" Grid.RowSpan="2">
                 <Grid.ColumnDefinitions>
                     <!-- 初始60, 展开变220 -->
                     <ColumnDefinition x:Name="NavColumn" Width="60"/>

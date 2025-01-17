@@ -5,10 +5,10 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              mc:Ignorable="d"
-             d:DesignHeight="950"
-             d:DesignWidth="1200"
+             d:DesignHeight="900"
+             d:DesignWidth="1250"
              MinHeight="700"
-             MinWidth="800">
+             MinWidth="1000">
 
     <UserControl.Resources>
         <!-- 颜色定义 -->
