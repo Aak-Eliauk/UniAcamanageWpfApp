@@ -17,6 +17,7 @@ namespace UniAcamanageWpfApp
 
         private const string ConnectionString = "Server=LAPTOP-9ALD8MJ8\\SQLSERVER;Database=UniAcademicDB;User Id=sa;Password=Aak995498;TrustServerCertificate=True;";
 
+        public string linkedID;
         public LoginWindow()
         {
             InitializeComponent();
@@ -56,6 +57,7 @@ namespace UniAcamanageWpfApp
         {
             string username = txtUserName.Text.Trim();
             string password = txtPassword.Password.Trim();
+            
 
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
@@ -65,7 +67,33 @@ namespace UniAcamanageWpfApp
 
             if (AuthenticateUser(username, password, out string role))
             {
-                MessageBox.Show($"登录成功！当前角色为：{role}");
+                // 登录成功后，将全局状态写入
+                GlobalUserState.LinkedID = linkedID; // linkedID 是你的私有字段
+                GlobalUserState.Role = role;
+                GlobalUserState.Username = username; // 如果需要存用户名
+
+                MessageBox.Show($"登录成功！当前角色：{role}");
+                // 根据role跳转不同主界面
+                switch (role.ToLower())
+                {
+                    case "student":
+                        var studentWin = new StudentMainWindow(username, role, linkedID);
+                        studentWin.Show();
+                        this.Close();
+                        break;
+                    case "teacher":
+                        // 还未实现TeacherMainWindow就用简单占位
+                        MessageBox.Show("Teacher role - 还未实现TeacherMainWindow");
+                        break;
+                    case "admin":
+                        // 还未实现AdminMainWindow就用简单占位
+                        MessageBox.Show("Admin role - 还未实现AdminMainWindow");
+                        break;
+                    default:
+                        // 未知角色
+                        MessageBox.Show("未知角色，无法跳转");
+                        break;
+                }
             }
             else
             {
@@ -149,7 +177,7 @@ namespace UniAcamanageWpfApp
                 using (var connection = new SqlConnection(ConnectionString))
                 {
                     connection.Open();
-                    string query = @"SELECT PasswordHash, Salt, Role FROM Users WHERE Username = @Input OR Email = @Input OR LinkedID = @Input";
+                    string query = @"SELECT PasswordHash, Salt, Role, LinkedID FROM Users WHERE Username = @Input OR Email = @Input OR LinkedID = @Input";
 
                     using (var command = new SqlCommand(query, connection))
                     {
@@ -161,6 +189,7 @@ namespace UniAcamanageWpfApp
                                 string storedHash = reader["PasswordHash"].ToString();
                                 string salt = reader["Salt"].ToString();
                                 role = reader["Role"].ToString();
+                                linkedID = reader["LinkedID"].ToString();
                                 string computedHash = ComputeHash(password, salt);
                                 return storedHash == computedHash;
                             }

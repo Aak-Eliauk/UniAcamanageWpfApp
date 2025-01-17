@@ -1,8 +1,12 @@
-﻿using System.Windows;
-using System.Windows.Input;
+﻿using MaterialDesignThemes.Wpf;
+using System.Data;
+using System.Windows;
 using System.Windows.Controls;
-using MaterialDesignThemes.Wpf;
+using System.Windows.Input;
+using UniAcamanageWpfApp.Models;
 using UniAcamanageWpfApp.Views;
+using Microsoft.Data.SqlClient;
+using System.Configuration;
 
 namespace UniAcamanageWpfApp
 {
@@ -11,10 +15,93 @@ namespace UniAcamanageWpfApp
         // 标记侧边栏是否展开
         private bool isNavExpanded = false;
 
-        public StudentMainWindow()
+        private string _currentUserName;
+        private string _currentUserRole;
+        private string _studentID;
+        private Student? _studentInfo;
+        private static readonly string ConnectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
+        public Student? StudentInfo { get; set; }
+       
+
+
+        public StudentMainWindow(string username, string role, string studentID)
         {
             InitializeComponent();
-            SideNav.Tag = "Collapsed"; // 默认折叠
+            SideNav.Tag = "Collapsed";
+
+            _currentUserName = username;
+            _currentUserRole = role;
+            _studentID = studentID;
+
+            // 查询学生信息
+            _studentInfo = GetStudentInfo(_studentID);
+            
+
+            if (_studentInfo != null)
+            {
+                // 显示用户信息
+                StudentInfo = GetStudentInfo(_studentID);
+                UserInfoPopup.DataContext = this;
+            }
+            else
+            {
+                MessageBox.Show("未找到学生信息！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
+        }
+        
+
+
+        // 查询学生信息的方法
+        private Student? GetStudentInfo(string studentID)
+        {
+            try
+            {
+                using (var connection = new SqlConnection(ConnectionString))
+                {
+                    connection.Open();
+                    string query = @"SELECT s.*, c.ClassName
+                                     FROM Student s
+                                     INNER JOIN Class c ON s.ClassID = c.ClassID
+                                     WHERE s.StudentID = @studentID";
+
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@studentID", studentID);
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                Student student = new Student
+                                {
+                                    StudentID = reader["StudentID"].ToString() ?? "",
+                                    Name = reader["Name"].ToString() ?? "",
+                                    Gender = reader["Gender"].ToString() ?? "",
+                                    BirthDate = reader["BirthDate"].ToString() ?? "",
+                                    ClassID = reader["ClassID"].ToString() ?? "",
+                                    Major = reader["Major"].ToString() ?? "",
+                                    Status = reader["Status"].ToString() ?? "",
+                                    // 添加其他需要的字段
+                                };
+                                // 获取 ClassName
+                                string className = reader["ClassName"].ToString() ?? "";
+                                // 如果需要，可以将 className 保存到 Student 类中，或者创建一个新的属性
+                                return student;
+                            }
+                            else
+                            {
+                                // 未找到对应的学生信息
+                                return null;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"数据库访问出错: {ex.Message}");
+                return null;
+            }
         }
 
         // 顶部栏拖拽
@@ -48,54 +135,18 @@ namespace UniAcamanageWpfApp
                 switch (btn.Name)
                 {
                     case "BtnHome":
-                        MainContentPresenter.Content = new TextBlock
-                        {
-                            Text = "首页 - 占位内容",
-                            FontSize = 24,
-                            HorizontalAlignment = HorizontalAlignment.Center,
-                            VerticalAlignment = VerticalAlignment.Center
-                        };
+                        // 切换到 HomeView
+                        MainContentPresenter.Content = new HomeView();
                         break;
                     case "BtnInfoQuery":
-                        MainContentPresenter.Content = new TextBlock
-                        {
-                            Text = "信息查询 - 占位内容",
-                            FontSize = 24,
-                            HorizontalAlignment = HorizontalAlignment.Center,
-                            VerticalAlignment = VerticalAlignment.Center
-                        };
+                        // 切换到 InfoQueryView
+                        MainContentPresenter.Content = new InfoQueryView();
                         break;
-                    case "BtnSelectCourse":
+                    // 其余的按钮
+                    default:
                         MainContentPresenter.Content = new TextBlock
                         {
-                            Text = "选课中心 - 占位内容",
-                            FontSize = 24,
-                            HorizontalAlignment = HorizontalAlignment.Center,
-                            VerticalAlignment = VerticalAlignment.Center
-                        };
-                        break;
-                    case "BtnAcademic":
-                        MainContentPresenter.Content = new TextBlock
-                        {
-                            Text = "学业情况 - 占位内容",
-                            FontSize = 24,
-                            HorizontalAlignment = HorizontalAlignment.Center,
-                            VerticalAlignment = VerticalAlignment.Center
-                        };
-                        break;
-                    case "BtnApply":
-                        MainContentPresenter.Content = new TextBlock
-                        {
-                            Text = "报名申请 - 占位内容",
-                            FontSize = 24,
-                            HorizontalAlignment = HorizontalAlignment.Center,
-                            VerticalAlignment = VerticalAlignment.Center
-                        };
-                        break;
-                    case "BtnMap":
-                        MainContentPresenter.Content = new TextBlock
-                        {
-                            Text = "教课通 - 占位内容(地图等)",
+                            Text = $"[{btn.Name}] - 占位内容",
                             FontSize = 24,
                             HorizontalAlignment = HorizontalAlignment.Center,
                             VerticalAlignment = VerticalAlignment.Center

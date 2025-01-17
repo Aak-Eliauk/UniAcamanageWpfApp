@@ -185,14 +185,14 @@
                                    VerticalAlignment="Center"/>
                     </StackPanel>
 
-                    <!-- 中：子导航栏占位 -->
+                    <!-- 中：子导航栏占位 
                     <TextBlock Text="子导航栏占位符"
                                FontSize="16"
                                Foreground="White"
                                VerticalAlignment="Center"
                                HorizontalAlignment="Center"
                                Grid.Column="1"/>
-
+                    -->
                     <!-- 右：用户头像 + 窗口控制 -->
                     <StackPanel Orientation="Horizontal"
                                 Grid.Column="2"
@@ -385,7 +385,15 @@
                         BorderThickness="1"
                         Padding="10">
                     <StackPanel>
-                        <TextBlock Text="用户信息占位符" FontSize="16" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding StudentInfo.Name}" FontSize="16" FontWeight="Bold"/>
+                        <TextBlock Text="学号：" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding StudentInfo.StudentID}" Margin="0,0,0,5"/>
+                        <TextBlock Text="专业：" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding StudentInfo.Major}" Margin="0,0,0,5"/>
+                        <TextBlock Text="班级：" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding StudentInfo.ClassID}" Margin="0,0,0,5"/>
+                        <TextBlock Text="学籍状态：" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding StudentInfo.Status}" Margin="0,0,0,5"/>
                         <Button Content="退出登录"
                                 Style="{StaticResource MaterialDesignFlatButton}"
                                 Margin="0,10,0,0"
