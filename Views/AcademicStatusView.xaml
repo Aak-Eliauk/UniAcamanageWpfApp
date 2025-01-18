@@ -1,0 +1,959 @@
+﻿<UserControl x:Class="UniAcamanageWpfApp.Views.AcademicStatusView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
+             mc:Ignorable="d"
+             d:DesignHeight="950"
+             d:DesignWidth="1200"
+             MinHeight="700"
+             MinWidth="800">
+
+    <UserControl.Resources>
+        <!-- 复用您之前的样式定义 -->
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#3A76D2"/>
+        <SolidColorBrush x:Key="SecondaryBrush" Color="#2B5CA6"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#007ACC"/>
+
+        <!-- Tab样式 -->
+        <Style x:Key="CustomTabStyle" TargetType="TabItem" 
+               BasedOn="{StaticResource MaterialDesignNavigationRailTabItem}">
+            <Setter Property="Width" Value="180"/>
+            <Setter Property="Height" Value="80"/>
+            <Setter Property="Margin" Value="5,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#666666"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}"/>
+                    <Setter Property="Background" Value="#F5F9FF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 数据卡片样式 -->
+        <Style x:Key="DataCardStyle" TargetType="materialDesign:Card">
+            <Setter Property="Margin" Value="8"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="materialDesign:ElevationAssist.Elevation" Value="Dp1"/>
+            <Setter Property="UniformCornerRadius" Value="8"/>
+        </Style>
+
+        <!-- 卡片渐变动画 -->
+        <Storyboard x:Key="FadeInStoryboard">
+            <DoubleAnimation 
+             Storyboard.TargetName="MainGrid"
+             Storyboard.TargetProperty="Opacity"
+             From="0" To="1" 
+             Duration="0:0:0.3"/>
+        </Storyboard>
+
+        <!-- 按钮样式 -->
+        <Style TargetType="Button" x:Key="AnimatedButtonStyle" 
+BasedOn="{StaticResource MaterialDesignRaisedButton}">
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Height" Value="45"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="8"/>
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Trigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation 
+                     Storyboard.TargetProperty="(Button.RenderTransform).(ScaleTransform.ScaleX)"
+                     To="1.05" Duration="0:0:0.1"/>
+                                <DoubleAnimation 
+                     Storyboard.TargetProperty="(Button.RenderTransform).(ScaleTransform.ScaleY)"
+                     To="1.05" Duration="0:0:0.1"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.EnterActions>
+                    <Trigger.ExitActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation 
+                     Storyboard.TargetProperty="(Button.RenderTransform).(ScaleTransform.ScaleX)"
+                     To="1" Duration="0:0:0.1"/>
+                                <DoubleAnimation 
+                     Storyboard.TargetProperty="(Button.RenderTransform).(ScaleTransform.ScaleY)"
+                     To="1" Duration="0:0:0.1"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.ExitActions>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- DataGrid样式 -->
+        <Style x:Key="CommonDataGridStyle" TargetType="DataGrid">
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="CanUserResizeRows" Value="False"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#DDDDDD"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="RowHeight" Value="35"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <!-- 添加以下滚动设置 -->
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+            <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/>
+            <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/>
+            <Setter Property="MaxHeight" Value="400"/>
+        </Style>
+
+        <!-- ComboBox样式 -->
+        <Style x:Key="CommonComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource MaterialDesignOutlinedComboBox}">
+            <Setter Property="Height" Value="56"/>
+            <Setter Property="Padding" Value="12,8,12,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="materialDesign:TextFieldAssist.TextFieldCornerRadius" Value="4"/>
+            <Setter Property="materialDesign:TextFieldAssist.UnderlineBrush" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="materialDesign:HintAssist.FloatingScale" Value="0.85"/>
+            <Setter Property="materialDesign:HintAssist.FloatingOffset" Value="0,-18"/>
+        </Style>
+
+        <!-- 搜索框样式 -->
+        <Style x:Key="SearchBoxStyle" TargetType="TextBox" BasedOn="{StaticResource MaterialDesignOutlinedTextBox}">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Height" Value="56"/>
+            <Setter Property="Padding" Value="12,8,12,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="materialDesign:TextFieldAssist.TextFieldCornerRadius" Value="4"/>
+            <Setter Property="materialDesign:TextFieldAssist.UnderlineBrush" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="materialDesign:HintAssist.Foreground" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="materialDesign:HintAssist.FloatingScale" Value="0.85"/>
+            <Setter Property="materialDesign:HintAssist.FloatingOffset" Value="0,-18"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+            <Setter Property="Background" Value="White"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <!-- 确保Grid能够适应UserControl的大小 -->
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TabControl Style="{StaticResource MaterialDesignTabControl}"
+                    TabStripPlacement="Top"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Margin="20,10,20,20">
+
+            <!-- 1. 成绩概览 Tab -->
+            <TabItem Style="{StaticResource CustomTabStyle}">
+                <TabItem.Header>
+                    <StackPanel>
+                        <materialDesign:PackIcon Kind="ChartLine" 
+                                               Width="24" Height="24"
+                                               HorizontalAlignment="Center"/>
+                        <TextBlock Text="成绩概览" 
+                                 TextAlignment="Center"
+                                 Margin="0,5,0,0"/>
+                    </StackPanel>
+                </TabItem.Header>
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="20">
+                        <materialDesign:Card Margin="10" 
+                                           Padding="30"
+                                           Background="White"
+                                           materialDesign:ElevationAssist.Elevation="Dp1"
+                                           UniformCornerRadius="15">
+                            <StackPanel>
+                                <!-- 顶部信息区域 -->
+                                <DockPanel LastChildFill="False" Margin="0,0,0,20">
+                                    <StackPanel DockPanel.Dock="Left">
+                                        <TextBlock Text="学业成绩概览" 
+                                                 FontSize="28" 
+                                                 FontWeight="Bold"
+                                                 Foreground="#333333"/>
+                                        <TextBlock Text="查看您的学业表现和成绩统计"
+                                                 FontSize="14"
+                                                 Foreground="#666666"
+                                                 Margin="0,5,0,0"/>
+                                    </StackPanel>
+
+                                    <!-- 学期选择器 -->
+                                    <ComboBox DockPanel.Dock="Right"
+                                            Width="200"
+                                            Style="{StaticResource CommonComboBoxStyle}"
+                                            materialDesign:HintAssist.Hint="选择学期"
+                                            ItemsSource="{Binding Semesters}"        
+                                            SelectedItem="{Binding SelectedSemester}"
+                                            x:Name="SemesterComboBox"/>
+                                </DockPanel>
+
+                                <!-- GPA和排名信息卡片 -->
+                                <Grid Margin="0,0,0,20">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 总GPA卡片 -->
+                                    <materialDesign:Card Grid.Column="0" 
+                                                       Style="{StaticResource DataCardStyle}"
+                                                       Background="#F5F9FF">
+                                        <StackPanel>
+                                            <DockPanel LastChildFill="False">
+                                                <materialDesign:PackIcon Kind="ChartLineVariant"
+                                                                       Width="24" Height="24"
+                                                                       Foreground="{StaticResource PrimaryBrush}"/>
+                                                <TextBlock Text="总体GPA"
+                                                         Margin="8,0,0,0"
+                                                         VerticalAlignment="Center"/>
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding OverallGPA, StringFormat=N2}"
+                                                     FontSize="32"
+                                                     FontWeight="Bold"
+                                                     Foreground="{StaticResource PrimaryBrush}"
+                                                     Margin="0,10"/>
+                                            <TextBlock Text="{Binding ClassRanking, StringFormat='班级排名：第{0}名'}"
+                                                     Foreground="#666666"/>
+                                        </StackPanel>
+                                    </materialDesign:Card>
+
+                                    <!-- 必修课GPA卡片 -->
+                                    <materialDesign:Card Grid.Column="1" 
+                                                       Style="{StaticResource DataCardStyle}">
+                                        <StackPanel>
+                                            <DockPanel LastChildFill="False">
+                                                <materialDesign:PackIcon Kind="BookEducation"
+                                                                       Width="24" Height="24"
+                                                                       Foreground="#4CAF50"/>
+                                                <TextBlock Text="必修课GPA"
+                                                         Margin="8,0,0,0"
+                                                         VerticalAlignment="Center"/>
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding BaseRequiredGPA, StringFormat=N2}"
+                                                     FontSize="32"
+                                                     FontWeight="Bold"
+                                                     Foreground="#4CAF50"
+                                                     Margin="0,10"/>
+                                            <TextBlock Text="{Binding RequiredCredits, StringFormat='已修学分：{0}'}"
+                                                     Foreground="#666666"/>
+                                        </StackPanel>
+                                    </materialDesign:Card>
+
+                                    <!-- 专业课GPA卡片 -->
+                                    <materialDesign:Card Grid.Column="2" 
+                                                       Style="{StaticResource DataCardStyle}">
+                                        <StackPanel>
+                                            <DockPanel LastChildFill="False">
+                                                <materialDesign:PackIcon Kind="School"
+                                                                       Width="24" Height="24"
+                                                                       Foreground="#FF9800"/>
+                                                <TextBlock Text="专业课GPA"
+                                                         Margin="8,0,0,0"
+                                                         VerticalAlignment="Center"/>
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding MajorRequiredGPA, StringFormat=N2}"
+                                                     FontSize="32"
+                                                     FontWeight="Bold"
+                                                     Foreground="#FF9800"
+                                                     Margin="0,10"/>
+                                            <TextBlock Text="{Binding MajorCredits, StringFormat='已修学分：{0}'}"
+                                                     Foreground="#666666"/>
+                                        </StackPanel>
+                                    </materialDesign:Card>
+
+                                    <!-- 选修课GPA卡片 -->
+                                    <materialDesign:Card Grid.Column="3" 
+                                                       Style="{StaticResource DataCardStyle}">
+                                        <StackPanel>
+                                            <DockPanel LastChildFill="False">
+                                                <materialDesign:PackIcon Kind="BookPlus"
+                                                                       Width="24" Height="24"
+                                                                       Foreground="#9C27B0"/>
+                                                <TextBlock Text="选修课GPA"
+                                                         Margin="8,0,0,0"
+                                                         VerticalAlignment="Center"/>
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding ElectiveGPA, StringFormat=N2}"
+                                                     FontSize="32"
+                                                     FontWeight="Bold"
+                                                     Foreground="#9C27B0"
+                                                     Margin="0,10"/>
+                                            <TextBlock Text="{Binding ElectiveCredits, StringFormat='已修学分：{0}'}"
+                                                     Foreground="#666666"/>
+                                        </StackPanel>
+                                    </materialDesign:Card>
+                                </Grid>
+
+                                <!-- 图表区域 -->
+                                <Grid Margin="0,20,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- GPA趋势图卡片 -->
+                                    <materialDesign:Card Grid.Column="0" 
+                                                       Style="{StaticResource DataCardStyle}"
+                                                       Margin="0,0,10,0">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+
+                                            <DockPanel Grid.Row="0" 
+                                                     LastChildFill="False" 
+                                                     Margin="0,0,0,16">
+                                                <TextBlock Text="GPA趋势"
+                                                         FontSize="16"
+                                                         FontWeight="SemiBold"
+                                                         Foreground="#333333"/>
+                                                <ComboBox Width="120"
+                                                        DockPanel.Dock="Right"
+                                                        materialDesign:HintAssist.Hint="查看范围"
+                                                        Style="{StaticResource MaterialDesignOutlinedComboBox}">
+                                                    <ComboBoxItem Content="全部学期"/>
+                                                    <ComboBoxItem Content="最近一年"/>
+                                                    <ComboBoxItem Content="最近一学期"/>
+                                                </ComboBox>
+                                            </DockPanel>
+
+                                            <lvc:CartesianChart x:Name="GpaChart" Grid.Row="1" 
+                                                              Height="300">
+                                                <lvc:CartesianChart.Series>
+                                                    <lvc:LineSeries Title="总GPA"
+                                                                   Values="{Binding GPATrendValues}"
+                                                                   PointGeometry="{x:Null}"
+                                                                   LineSmoothness="0.5"
+                                                                   Stroke="{StaticResource PrimaryBrush}"
+                                                                   Fill="Transparent"/>
+                                                </lvc:CartesianChart.Series>
+                                                <lvc:CartesianChart.AxisX>
+                                                    <lvc:Axis Title="学期"
+                                                             Labels="{Binding SemesterLabels}"/>
+                                                </lvc:CartesianChart.AxisX>
+                                                <lvc:CartesianChart.AxisY>
+                                                    <lvc:Axis Title="GPA"
+                                                             MinValue="0"
+                                                             MaxValue="4.0"/>
+                                                </lvc:CartesianChart.AxisY>
+                                            </lvc:CartesianChart>
+                                        </Grid>
+                                    </materialDesign:Card>
+
+                                    <!-- 成绩分布饼图卡片 -->
+                                    <materialDesign:Card Grid.Column="1" 
+                                                       Style="{StaticResource DataCardStyle}"
+                                                       Margin="10,0,0,0">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Grid.Row="0"
+                                                     Text="成绩分布"
+                                                     FontSize="16"
+                                                     FontWeight="SemiBold"
+                                                     Foreground="#333333"
+                                                     Margin="0,0,0,16"/>
+
+                                            <lvc:PieChart x:Name="GradeDistributionChart"
+                                                         Grid.Row="1" 
+                                                         Height="300"
+                                                         Series="{Binding GradeDistributionSeries}"
+                                                         DataContext="{Binding}"
+                                                         LegendLocation="Right">
+                                                <lvc:PieChart.ChartLegend>
+                                                    <lvc:DefaultLegend BulletSize="10"/>
+                                                </lvc:PieChart.ChartLegend>
+                                            </lvc:PieChart>
+                                        </Grid>
+                                    </materialDesign:Card>
+                                </Grid>
+
+                                <!-- 成绩明细表格 -->
+                                <materialDesign:Card Style="{StaticResource DataCardStyle}"
+                                                   Margin="0,20,0,0">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- 表格工具栏 -->
+                                        <DockPanel Grid.Row="0" 
+                                                 LastChildFill="False"
+                                                 Margin="0,0,0,16">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="成绩明细"
+                                                         FontSize="16"
+                                                         FontWeight="SemiBold"
+                                                         Foreground="#333333"
+                                                         VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding TotalCourses, StringFormat='（共 {0} 门课程）'}"
+                                                         Margin="8,0,0,0"
+                                                         Foreground="#666666"
+                                                         VerticalAlignment="Center"/>
+                                            </StackPanel>
+
+                                            <StackPanel DockPanel.Dock="Right" 
+                                                      Orientation="Horizontal">
+                                                <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                        Margin="0,0,16,0"
+                                                        Click="ExportGrades_Click">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <materialDesign:PackIcon Kind="FileExcel" 
+                                                                               Margin="0,0,8,0"/>
+                                                        <TextBlock Text="导出成绩单"/>
+                                                    </StackPanel>
+                                                </Button>
+
+                                                <TextBox x:Name="SearchBox"
+                                                         Width="200"
+                                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                         materialDesign:HintAssist.Hint="搜索课程"
+                                                         materialDesign:TextFieldAssist.HasClearButton="True"
+                                                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
+                                                    <TextBox.InputBindings>
+                                                        <KeyBinding Command="{Binding SearchCommand}"
+                                                                  Key="Return"/>
+                                                    </TextBox.InputBindings>
+                                                </TextBox>
+                                            </StackPanel>
+                                        </DockPanel>
+
+                                        <!-- 成绩表格 -->
+                                        <DataGrid Grid.Row="1"
+                                                  x:Name="GradesDataGrid"
+                                                  Style="{StaticResource CommonDataGridStyle}"
+                                                  ItemsSource="{Binding GradesList}"
+                                                  AutoGenerateColumns="False"
+                                                  CanUserSortColumns="True"
+                                                  MaxHeight="400"
+                                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                                  ScrollViewer.CanContentScroll="True"
+                                                  VirtualizingPanel.IsVirtualizing="True"
+                                                  VirtualizingPanel.VirtualizationMode="Recycling">
+                                                  
+
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="学期" 
+                                                                  Binding="{Binding Semester}"
+                                                                  Width="100"/>
+                                                <DataGridTextColumn Header="课程代码" 
+                                                                  Binding="{Binding CourseCode}"
+                                                                  Width="100"/>
+                                                <DataGridTextColumn Header="课程名称" 
+                                                                  Binding="{Binding CourseName}"
+                                                                  Width="200"/>
+                                                <DataGridTextColumn Header="课程类型" 
+                                                                  Binding="{Binding CourseType}"
+                                                                  Width="100"/>
+                                                <DataGridTextColumn Header="学分" 
+                                                                  Binding="{Binding Credit}"
+                                                                  Width="60"/>
+                                                <DataGridTextColumn Header="成绩" 
+                                                                  Binding="{Binding Score}"
+                                                                  Width="80">
+                                                    <DataGridTextColumn.ElementStyle>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Score}" Value="60">
+                                                                    <Setter Property="Foreground" Value="#FF9800"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsRetake}" Value="True">
+                                                                    <Setter Property="FontStyle" Value="Italic"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </DataGridTextColumn.ElementStyle>
+                                                </DataGridTextColumn>
+                                                <DataGridTextColumn Header="绩点" 
+                                                                  Binding="{Binding BaseGradePoint}"
+                                                                  Width="60"/>
+                                                <DataGridTextColumn Header="修读方式" 
+                                                                  Binding="{Binding CourseStatus}"
+                                                                  Width="100"/>
+                                                <DataGridTextColumn Header="备注" 
+                                                                  Binding="{Binding Remarks}"
+                                                                  Width="*"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </Grid>
+                                </materialDesign:Card>
+                            </StackPanel>
+                        </materialDesign:Card>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- 2. 学业完成情况 Tab -->
+            <TabItem Style="{StaticResource CustomTabStyle}">
+                <TabItem.Header>
+                    <StackPanel>
+                        <materialDesign:PackIcon Kind="SchoolOutline" 
+                                               Width="24" Height="24"
+                                               HorizontalAlignment="Center"/>
+                        <TextBlock Text="学业完成情况" 
+                                 TextAlignment="Center"
+                                 Margin="0,5,0,0"/>
+                    </StackPanel>
+                </TabItem.Header>
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="20">
+                        <materialDesign:Card Margin="10" 
+                                           Padding="30"
+                                           Background="White"
+                                           materialDesign:ElevationAssist.Elevation="Dp1"
+                                           UniformCornerRadius="15">
+                            <StackPanel>
+                                <!-- 顶部信息区域 -->
+                                <DockPanel LastChildFill="False" Margin="0,0,0,20">
+                                    <StackPanel DockPanel.Dock="Left">
+                                        <TextBlock Text="培养方案完成情况" 
+                                                 FontSize="28" 
+                                                 FontWeight="Bold"
+                                                 Foreground="#333333"/>
+                                        <TextBlock Text="查看您的学业完成进度和课程修读情况"
+                                                 FontSize="14"
+                                                 Foreground="#666666"
+                                                 Margin="0,5,0,0"/>
+                                    </StackPanel>
+
+                                    <!-- 专业信息显示 -->
+                                    <StackPanel DockPanel.Dock="Right" 
+                                              HorizontalAlignment="Right">
+                                        <TextBlock Text="{Binding CurrentMajor}"
+                                                 FontSize="16"
+                                                 FontWeight="SemiBold"
+                                                 Foreground="#333333"/>
+                                        <TextBlock Text="{Binding CurrentGrade}"
+                                                 FontSize="14"
+                                                 Foreground="#666666"
+                                                 Margin="0,5,0,0"/>
+                                    </StackPanel>
+                                </DockPanel>
+
+                                <!-- 总体完成进度卡片 -->
+                                <materialDesign:Card Style="{StaticResource DataCardStyle}"
+                                                   Background="#F5F9FF">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- 左侧进度环 -->
+                                        <Grid Grid.Column="0" Width="120" Height="120">
+                                            <lvc:PieChart x:Name="TotalProgressChart" DisableAnimations="True">
+                                                <lvc:PieChart.Series>
+                                                    <lvc:PieSeries Values="{Binding TotalProgressValues}" 
+                                                                   DataLabels="True"
+                                                                   LabelPoint="{Binding ProgressLabelPoint}"
+                                                                   Fill="{StaticResource PrimaryBrush}"/>
+                                                </lvc:PieChart.Series>
+                                            </lvc:PieChart>
+                                            <TextBlock Text="{Binding TotalProgress, StringFormat={}{0}%}"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"
+                                                     FontSize="24"
+                                                     FontWeight="Bold"
+                                                     Foreground="{StaticResource PrimaryBrush}"/>
+                                        </Grid>
+
+                                        <!-- 中间进度详情 -->
+                                        <StackPanel Grid.Column="1" 
+                                                  Margin="20,0"
+                                                  VerticalAlignment="Center">
+                                            <TextBlock Text="总体完成进度"
+                                                     FontSize="18"
+                                                     FontWeight="SemiBold"
+                                                     Margin="0,0,0,10"/>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="20"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="20"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="已修学分"
+                                                             Foreground="#666666"/>
+                                                    <TextBlock Text="{Binding CompletedCredits}"
+                                                             FontSize="20"
+                                                             FontWeight="Bold"
+                                                             Foreground="{StaticResource PrimaryBrush}"/>
+                                                </StackPanel>
+
+                                                <TextBlock Grid.Column="1" 
+                                                         Text="/"
+                                                         VerticalAlignment="Bottom"
+                                                         Margin="5,0"
+                                                         FontSize="20"/>
+
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="要求学分"
+                                                             Foreground="#666666"/>
+                                                    <TextBlock Text="{Binding RequiredCredits}"
+                                                             FontSize="20"
+                                                             FontWeight="Bold"/>
+                                                </StackPanel>
+
+                                                <TextBlock Grid.Column="3" 
+                                                         Text="="
+                                                         VerticalAlignment="Bottom"
+                                                         Margin="5,0"
+                                                         FontSize="20"/>
+
+                                                <StackPanel Grid.Column="4">
+                                                    <TextBlock Text="剩余学分"
+                                                             Foreground="#666666"/>
+                                                    <TextBlock Text="{Binding RemainingCredits}"
+                                                             FontSize="20"
+                                                             FontWeight="Bold"
+                                                             Foreground="#FF9800"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </StackPanel>
+
+                                        <!-- 右侧统计信息 -->
+                                        <StackPanel Grid.Column="2"
+                                                  Margin="20,0,0,0"
+                                                  MinWidth="200">
+                                            <TextBlock Text="课程统计"
+                                                     FontSize="16"
+                                                     FontWeight="SemiBold"
+                                                     Margin="0,0,0,10"/>
+                                            <StackPanel Orientation="Horizontal"
+                                                      Margin="0,5">
+                                                <TextBlock Text="已修课程："
+                                                         Foreground="#666666"/>
+                                                <TextBlock Text="{Binding CompletedCourses}"
+                                                         Foreground="#4CAF50"
+                                                         FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal"
+                                                      Margin="0,5">
+                                                <TextBlock Text="在修课程："
+                                                         Foreground="#666666"/>
+                                                <TextBlock Text="{Binding OngoingCourses}"
+                                                         Foreground="#2196F3"
+                                                         FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal"
+                                                      Margin="0,5">
+                                                <TextBlock Text="未通过课程："
+                                                         Foreground="#666666"/>
+                                                <TextBlock Text="{Binding FailedCourses}"
+                                                         Foreground="#F44336"
+                                                         FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+                                </materialDesign:Card>
+
+                                <!-- 课程类型完成情况 -->
+                                <Grid Margin="0,20,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 必修课程完成情况 -->
+                                    <materialDesign:Card Grid.Column="0" 
+                                                       Style="{StaticResource DataCardStyle}"
+                                                       Margin="0,0,10,0">
+                                        <StackPanel>
+                                            <DockPanel LastChildFill="False">
+                                                <materialDesign:PackIcon Kind="BookEducation"
+                                                                       Width="24" Height="24"
+                                                                       Foreground="#4CAF50"/>
+                                                <TextBlock Text="必修课程完成情况"
+                                                         FontSize="16"
+                                                         FontWeight="SemiBold"
+                                                         Margin="8,0,0,0"
+                                                         VerticalAlignment="Center"/>
+                                            </DockPanel>
+
+                                            <ProgressBar Value="{Binding RequiredProgress}"
+                                                       Maximum="100"
+                                                       Style="{StaticResource MaterialDesignLinearProgressBar}"
+                                                       Height="8"
+                                                       Margin="0,16,0,8"
+                                                       Foreground="#4CAF50"/>
+
+                                            <Grid Margin="0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="完成进度"
+                                                         Foreground="#666666"/>
+                                                <TextBlock Grid.Column="1"
+                                                         Text="{Binding RequiredProgress, StringFormat={}{0}%}"
+                                                         Foreground="#4CAF50"
+                                                         FontWeight="SemiBold"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="已修/总学分"
+                                                         Foreground="#666666"/>
+                                                <TextBlock Grid.Column="1"
+                                                         Text="{Binding RequiredCreditsStatus}"
+                                                         FontWeight="SemiBold"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </materialDesign:Card>
+
+                                    <!-- 专业课程完成情况 -->
+                                    <materialDesign:Card Grid.Column="1" 
+                                                       Style="{StaticResource DataCardStyle}"
+                                                       Margin="10,0">
+                                        <StackPanel>
+                                            <DockPanel LastChildFill="False">
+                                                <materialDesign:PackIcon Kind="School"
+                                                                       Width="24" Height="24"
+                                                                       Foreground="#FF9800"/>
+                                                <TextBlock Text="专业课程完成情况"
+                                                         FontSize="16"
+                                                         FontWeight="SemiBold"
+                                                         Margin="8,0,0,0"
+                                                         VerticalAlignment="Center"/>
+                                            </DockPanel>
+
+                                            <ProgressBar Value="{Binding MajorProgress}"
+                                                       Maximum="100"
+                                                       Style="{StaticResource MaterialDesignLinearProgressBar}"
+                                                       Height="8"
+                                                       Margin="0,16,0,8"
+                                                       Foreground="#FF9800"/>
+
+                                            <Grid Margin="0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="完成进度"
+                                                         Foreground="#666666"/>
+                                                <TextBlock Grid.Column="1"
+                                                         Text="{Binding MajorProgress, StringFormat={}{0}%}"
+                                                         Foreground="#FF9800"
+                                                         FontWeight="SemiBold"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="已修/总学分"
+                                                         Foreground="#666666"/>
+                                                <TextBlock Grid.Column="1"
+                                                         Text="{Binding MajorCreditsStatus}"
+                                                         FontWeight="SemiBold"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </materialDesign:Card>
+
+                                    <!-- 选修课程完成情况 -->
+                                    <materialDesign:Card Grid.Column="2" 
+                                                       Style="{StaticResource DataCardStyle}"
+                                                       Margin="10,0,0,0">
+                                        <StackPanel>
+                                            <DockPanel LastChildFill="False">
+                                                <materialDesign:PackIcon Kind="BookPlus"
+                                                                       Width="24" Height="24"
+                                                                       Foreground="#9C27B0"/>
+                                                <TextBlock Text="选修课程完成情况"
+                                                         FontSize="16"
+                                                         FontWeight="SemiBold"
+                                                         Margin="8,0,0,0"
+                                                         VerticalAlignment="Center"/>
+                                            </DockPanel>
+
+                                            <ProgressBar Value="{Binding ElectiveProgress}"
+                                                       Maximum="100"
+                                                       Style="{StaticResource MaterialDesignLinearProgressBar}"
+                                                       Height="8"
+                                                       Margin="0,16,0,8"
+                                                       Foreground="#9C27B0"/>
+
+                                            <Grid Margin="0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="完成进度"
+                                                         Foreground="#666666"/>
+                                                <TextBlock Grid.Column="1"
+                                                         Text="{Binding ElectiveProgress, StringFormat={}{0}%}"
+                                                         Foreground="#9C27B0"
+                                                         FontWeight="SemiBold"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="已修/总学分"
+                                                         Foreground="#666666"/>
+                                                <TextBlock Grid.Column="1"
+                                                         Text="{Binding ElectiveCreditsStatus}"
+                                                         FontWeight="SemiBold"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </materialDesign:Card>
+                                </Grid>
+
+                                <!-- 课程完成详情表格 -->
+                                <materialDesign:Card Style="{StaticResource DataCardStyle}"
+                                                   Margin="0,20,0,0">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- 表格工具栏 -->
+                                        <DockPanel Grid.Row="0" 
+                                                 LastChildFill="False"
+                                                 Margin="0,0,0,16">
+                                            <TextBlock Text="课程修读详情"
+                                                     FontSize="16"
+                                                     FontWeight="SemiBold"
+                                                     VerticalAlignment="Center"/>
+
+                                            <StackPanel DockPanel.Dock="Right" 
+                                                      Orientation="Horizontal">
+                                                <ComboBox x:Name="CourseTypeComboBox"
+                                                         Width="150"
+                                                         Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                         materialDesign:HintAssist.Hint="课程类型"
+                                                         Margin="0,0,16,0">
+                                                    <ComboBoxItem Content="全部课程"/>
+                                                    <ComboBoxItem Content="必修课程"/>
+                                                    <ComboBoxItem Content="专业课程"/>
+                                                    <ComboBoxItem Content="选修课程"/>
+                                                </ComboBox>
+
+                                                <ComboBox x:Name="CourseStatusComboBox"
+                                                         Width="150"
+                                                         Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                         materialDesign:HintAssist.Hint="课程状态"
+                                                         Margin="0,0,16,0">
+                                                    <ComboBoxItem Content="全部状态"/>
+                                                    <ComboBoxItem Content="已修完成"/>
+                                                    <ComboBoxItem Content="正在修读"/>
+                                                    <ComboBoxItem Content="未修"/>
+                                                    <ComboBoxItem Content="未通过"/>
+                                                </ComboBox>
+
+                                                <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                        Content="导出进度报告"
+                                                        Click="ExportProgress_Click"/>
+                                            </StackPanel>
+                                        </DockPanel>
+
+                                        <!-- 课程列表 -->
+                                        <DataGrid Grid.Row="1"
+                                                  x:Name="CourseCompletionGrid"
+                                                  Style="{StaticResource CommonDataGridStyle}"
+                                                  ItemsSource="{Binding CoursesList}"
+                                                  AutoGenerateColumns="False"
+                                                  MaxHeight="400"
+                                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                                  ScrollViewer.CanContentScroll="True"
+                                                  VirtualizingPanel.IsVirtualizing="True"
+                                                  VirtualizingPanel.VirtualizationMode="Recycling">
+
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="课程代码" 
+                                                                  Binding="{Binding CourseCode}"
+                                                                  Width="100"/>
+                                                <DataGridTextColumn Header="课程名称" 
+                                                                  Binding="{Binding CourseName}"
+                                                                  Width="200"/>
+                                                <DataGridTextColumn Header="课程类型" 
+                                                                  Binding="{Binding CourseType}"
+                                                                  Width="100"/>
+                                                <DataGridTextColumn Header="学分" 
+                                                                  Binding="{Binding Credit}"
+                                                                  Width="60"/>
+                                                <DataGridTextColumn Header="状态" 
+                                                                  Binding="{Binding Status}"
+                                                                  Width="100">
+                                                    <DataGridTextColumn.ElementStyle>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Status}" Value="已修完成">
+                                                                    <Setter Property="Foreground" Value="#4CAF50"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Status}" Value="正在修读">
+                                                                    <Setter Property="Foreground" Value="#2196F3"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Status}" Value="未通过">
+                                                                    <Setter Property="Foreground" Value="#F44336"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </DataGridTextColumn.ElementStyle>
+                                                </DataGridTextColumn>
+                                                <DataGridTextColumn Header="修读学期" 
+                                                                  Binding="{Binding Semester}"
+                                                                  Width="100"/>
+                                                <DataGridTextColumn Header="成绩" 
+                                                                  Binding="{Binding Score}"
+                                                                  Width="80"/>
+                                                <DataGridTextColumn Header="备注" 
+                                                                  Binding="{Binding Remarks}"
+                                                                  Width="*"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </Grid>
+                                </materialDesign:Card>
+                            </StackPanel>
+                        </materialDesign:Card>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+        <materialDesign:Card Grid.RowSpan="2" 
+                        Background="#80FFFFFF"
+                        Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
+                     Value="0"
+                     IsIndeterminate="True"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center"/>
+        </materialDesign:Card>
+    </Grid>
+</UserControl>                               

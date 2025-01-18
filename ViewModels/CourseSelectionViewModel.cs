@@ -148,19 +148,19 @@ namespace UniAcamanageWpfApp.ViewModels
 
         public void UpdateRecommendedCoursesStatus()
         {
-            var selectedCourseIds = new HashSet<int>(SelectedCourses.Select(c => c.CourseId));
+            var selectedCourseIds = new HashSet<int>(SelectedCourses.Select(c => c.CourseID));
 
             foreach (var course in RecommendedBasicCourses)
             {
-                course.IsSelected = selectedCourseIds.Contains(course.CourseId);
+                course.IsSelected = selectedCourseIds.Contains(course.CourseID);
             }
             foreach (var course in RecommendedMajorCourses)
             {
-                course.IsSelected = selectedCourseIds.Contains(course.CourseId);
+                course.IsSelected = selectedCourseIds.Contains(course.CourseID);
             }
             foreach (var course in RecommendedElectiveCourses)
             {
-                course.IsSelected = selectedCourseIds.Contains(course.CourseId);
+                course.IsSelected = selectedCourseIds.Contains(course.CourseID);
             }
 
             UpdateStatistics();

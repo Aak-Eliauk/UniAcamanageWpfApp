@@ -88,20 +88,20 @@ namespace UniAcamanageWpfApp.Views
         // 在 CourseSelectionView.xaml.cs 中添加更新所有课程状态的方法
         private void UpdateAllCoursesStatus()
         {
-            var selectedCourseIds = new HashSet<int>(_viewModel.SelectedCourses.Select(c => c.CourseId));
+            var selectedCourseIds = new HashSet<int>(_viewModel.SelectedCourses.Select(c => c.CourseID));
 
             // 更新推荐课程状态
             foreach (var course in _viewModel.RecommendedBasicCourses)
             {
-                course.IsSelected = selectedCourseIds.Contains(course.CourseId);
+                course.IsSelected = selectedCourseIds.Contains(course.CourseID);
             }
             foreach (var course in _viewModel.RecommendedMajorCourses)
             {
-                course.IsSelected = selectedCourseIds.Contains(course.CourseId);
+                course.IsSelected = selectedCourseIds.Contains(course.CourseID);
             }
             foreach (var course in _viewModel.RecommendedElectiveCourses)
             {
-                course.IsSelected = selectedCourseIds.Contains(course.CourseId);
+                course.IsSelected = selectedCourseIds.Contains(course.CourseID);
             }
 
             // 更新 DataGrid
@@ -432,7 +432,7 @@ namespace UniAcamanageWpfApp.Views
                     return;
                 }
 
-                bool success = await _courseService.AddCourseSelectionAsync(studentID, course.CourseId);
+                bool success = await _courseService.AddCourseSelectionAsync(studentID, course.CourseID);
                 if (success)
                 {
                     await LoadSelectedCoursesAsync();
@@ -461,7 +461,7 @@ namespace UniAcamanageWpfApp.Views
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    bool success = await _courseService.RemoveCourseSelectionAsync(studentID, course.CourseId);
+                    bool success = await _courseService.RemoveCourseSelectionAsync(studentID, course.CourseID);
                     if (success)
                     {
                         await LoadSelectedCoursesAsync();
@@ -831,10 +831,10 @@ namespace UniAcamanageWpfApp.Views
             var courses = grid.ItemsSource as IEnumerable<Course>;
             if (courses == null) return;
 
-            var optimizedIds = optimizedCourses.Select(c => c.CourseId).ToHashSet();
+            var optimizedIds = optimizedCourses.Select(c => c.CourseID).ToHashSet();
             foreach (var course in courses)
             {
-                course.IsSelected = optimizedIds.Contains(course.CourseId);
+                course.IsSelected = optimizedIds.Contains(course.CourseID);
             }
             grid.Items.Refresh();
         }

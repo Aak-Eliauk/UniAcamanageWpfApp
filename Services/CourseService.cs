@@ -117,7 +117,7 @@ namespace UniAcamanageWpfApp.Services
                         {
                             courses.Add(new Course
                             {
-                                CourseId = reader.GetInt32(reader.GetOrdinal("CourseID")),
+                                CourseID = reader.GetInt32(reader.GetOrdinal("CourseID")),
                                 CourseCode = reader.GetString(reader.GetOrdinal("CourseCode")),
                                 CourseName = reader.GetString(reader.GetOrdinal("CourseName")),
                                 CourseType = reader.GetString(reader.GetOrdinal("CourseType")),
@@ -239,7 +239,7 @@ namespace UniAcamanageWpfApp.Services
                         {
                             courses.Add(new Course
                             {
-                                CourseId = reader.GetInt32(reader.GetOrdinal("CourseID")),
+                                CourseID = reader.GetInt32(reader.GetOrdinal("CourseID")),
                                 CourseCode = reader.GetString(reader.GetOrdinal("CourseCode")),
                                 CourseName = reader.GetString(reader.GetOrdinal("CourseName")),
                                 CourseType = reader.GetString(reader.GetOrdinal("CourseType")),
@@ -298,7 +298,7 @@ namespace UniAcamanageWpfApp.Services
                         {
                             courses.Add(new Course
                             {
-                                CourseId = reader.GetInt32(reader.GetOrdinal("CourseID")),
+                                CourseID = reader.GetInt32(reader.GetOrdinal("CourseID")),
                                 CourseCode = reader.GetString(reader.GetOrdinal("CourseCode")),
                                 CourseName = reader.GetString(reader.GetOrdinal("CourseName")),
                                 CourseType = reader.GetString(reader.GetOrdinal("CourseType")),
@@ -406,7 +406,7 @@ namespace UniAcamanageWpfApp.Services
                         {
                             var course = new Course
                             {
-                                CourseId = reader.GetInt32(0),
+                                CourseID = reader.GetInt32(0),
                                 CourseCode = reader.GetString(1),
                                 CourseName = reader.GetString(2),
                                 CourseType = reader.GetString(3),

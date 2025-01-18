@@ -336,18 +336,7 @@
                         </Button>
 
                         <!-- ===== 按钮5：报名申请 ===== -->
-                        <Button x:Name="BtnApply"
-                                Style="{StaticResource SideNavLargeButtonStyle}"
-                                Click="NavButton_Click">
-                            <StackPanel Style="{StaticResource SideNavStackPanelStyle}">
-                                <materialDesign:PackIcon Style="{StaticResource SideNavPackIconStyle}"
-                                                         Kind="FileDocumentEdit"
-                                                         Width="32" Height="32"
-                                                         Margin="0,0,8,0" Foreground="#FF8E44AD"/>
-                                <TextBlock Text="报名申请"
-                                           Style="{StaticResource SideNavTextStyle}" Foreground="#FF8E44AD"/>
-                            </StackPanel>
-                        </Button>
+                        
 
                         <!-- ===== 按钮6：教课通 ===== -->
                         <Button x:Name="BtnMap"

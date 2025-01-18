@@ -146,6 +146,9 @@ namespace UniAcamanageWpfApp
                         // 切换到 CourseSelectionView
                         MainContentPresenter.Content = new CourseSelectionView();
                         break;
+                    case "BtnAcademic":
+                        MainContentPresenter.Content = new AcademicStatusView(_studentID);
+                        break;
                     // 其余的按钮
                     default:
                         MainContentPresenter.Content = new TextBlock
