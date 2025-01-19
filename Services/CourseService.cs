@@ -20,6 +20,7 @@ namespace UniAcamanageWpfApp.Services
         Task<bool> MarkNotificationAsReadAsync(int notificationId);
         Task<List<Course>> GetOptimizedCourseSelectionAsync(string studentId, int semesterId);
         Task<List<Course>> GetSelectedCoursesAsync(string studentId, int semesterId);
+
     }
 
     public class CourseService : ICourseService
@@ -31,26 +32,190 @@ namespace UniAcamanageWpfApp.Services
             _connectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
         }
 
+
         // 添加选课
         public async Task<bool> AddCourseSelectionAsync(string studentId, int courseId)
         {
             using (var connection = new SqlConnection(_connectionString))
             {
-                var sql = @"
-                INSERT INTO StudentCourse (StudentID, CourseID, SelectionDate)
-                VALUES (@StudentID, @CourseID, @SelectionDate)";
+                await connection.OpenAsync();
+                using var transaction = await connection.BeginTransactionAsync() as SqlTransaction;
 
-                using (var command = new SqlCommand(sql, connection))
+                try
                 {
-                    command.Parameters.AddWithValue("@StudentID", studentId);
-                    command.Parameters.AddWithValue("@CourseID", courseId);
-                    command.Parameters.AddWithValue("@SelectionDate", DateTime.Now);
+                    // 1. 获取课程所属学期
+                    var getSemesterSql = "SELECT SemesterID FROM Course WHERE CourseID = @CourseID";
+                    using (var command = new SqlCommand(getSemesterSql, connection, transaction))
+                    {
+                        command.Parameters.AddWithValue("@CourseID", courseId);
+                        var semesterId = (int)await command.ExecuteScalarAsync();
 
-                    await connection.OpenAsync();
-                    var result = await command.ExecuteNonQueryAsync();
-                    return result > 0;
+                        // 2. 检查时间冲突
+                        if (await HasTimeConflict(connection, studentId, courseId, semesterId))
+                        {
+                            throw new InvalidOperationException("所选课程与已选课程时间冲突");
+                        }
+
+                        // 3. 检查课程容量
+                        var checkCapacitySql = @"
+                    SELECT 
+                        CASE 
+                            WHEN (SELECT COUNT(*) FROM StudentCourse WHERE CourseID = @CourseID) < c.Capacity 
+                            THEN 1 
+                            ELSE 0 
+                        END
+                    FROM Course c
+                    WHERE c.CourseID = @CourseID";
+
+                        using (var capacityCmd = new SqlCommand(checkCapacitySql, connection, transaction))
+                        {
+                            capacityCmd.Parameters.AddWithValue("@CourseID", courseId);
+                            var hasCapacity = (int)await capacityCmd.ExecuteScalarAsync() == 1;
+                            if (!hasCapacity)
+                            {
+                                throw new InvalidOperationException("课程已达到人数上限");
+                            }
+                        }
+
+                        // 4. 添加选课记录
+                        var insertSql = @"
+                    INSERT INTO StudentCourse (StudentID, CourseID, SelectionType, SelectionDate)
+                    VALUES (@StudentID, @CourseID, '待审核', @SelectionDate)";
+
+                        using (var insertCmd = new SqlCommand(insertSql, connection, transaction))
+                        {
+                            insertCmd.Parameters.AddWithValue("@StudentID", studentId);
+                            insertCmd.Parameters.AddWithValue("@CourseID", courseId);
+                            insertCmd.Parameters.AddWithValue("@SelectionDate", DateTime.Now);
+                            await insertCmd.ExecuteNonQueryAsync();
+                        }
+                    }
+
+                    await transaction.CommitAsync();
+                    return true;
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
                 }
             }
+        }
+
+        private async Task<bool> HasTimeConflict(SqlConnection connection, string studentId, int courseId, int semesterId)
+        {
+            var sql = @"
+    WITH ParsedNewCourse AS (
+        -- 解析要添加的课程的时间段
+        SELECT 
+            value AS TimeSlot,
+            CAST(SUBSTRING(value, 1, CHARINDEX('-', value) - 1) AS INT) as WeekDay,
+            CAST(SUBSTRING(value, 
+                CHARINDEX('-', value) + 1, 
+                CHARINDEX('-', value, CHARINDEX('-', value) + 1) - 
+                CHARINDEX('-', value) - 1) AS INT) as StartSection,
+            CAST(SUBSTRING(value,
+                CHARINDEX('-', value, CHARINDEX('-', value) + 1) + 1,
+                CHARINDEX('-', value, CHARINDEX('-', value, 
+                    CHARINDEX('-', value) + 1) + 1) - 
+                CHARINDEX('-', value, CHARINDEX('-', value) + 1) - 1) AS INT) as EndSection,
+            CAST(SUBSTRING(value,
+                CHARINDEX('-', value, CHARINDEX('-', value, 
+                    CHARINDEX('-', value) + 1) + 1) + 1,
+                CHARINDEX('-', value, CHARINDEX('-', value, CHARINDEX('-', value, 
+                    CHARINDEX('-', value) + 1) + 1) + 1) - 
+                CHARINDEX('-', value, CHARINDEX('-', value, 
+                    CHARINDEX('-', value) + 1) + 1) - 1) AS INT) as StartWeek,
+            CAST(SUBSTRING(value,
+                CHARINDEX('-', value, CHARINDEX('-', value, CHARINDEX('-', value, 
+                    CHARINDEX('-', value) + 1) + 1) + 1) + 1,
+                CASE 
+                    WHEN CHARINDEX('A', value) > 0 OR CHARINDEX('B', value) > 0 
+                    THEN CHARINDEX('-', value + '-', 
+                         LAST_VALUE(CHARINDEX('-', value)) OVER (ORDER BY (SELECT NULL))) - 
+                         LAST_VALUE(CHARINDEX('-', value)) OVER (ORDER BY (SELECT NULL)) - 1
+                    ELSE LEN(value) - 
+                         LAST_VALUE(CHARINDEX('-', value)) OVER (ORDER BY (SELECT NULL))
+                END) AS INT) as EndWeek,
+            CASE 
+                WHEN CHARINDEX('A', value) > 0 THEN 'A'
+                WHEN CHARINDEX('B', value) > 0 THEN 'B'
+                ELSE NULL 
+            END as WeekType
+        FROM Course c
+        CROSS APPLY STRING_SPLIT(c.ScheduleTime, ',') st
+        WHERE c.CourseID = @CourseID
+    ),
+    ParsedExistingCourses AS (
+        -- 解析学生已选课程的时间段
+        SELECT 
+            value AS TimeSlot,
+            CAST(SUBSTRING(value, 1, CHARINDEX('-', value) - 1) AS INT) as WeekDay,
+            CAST(SUBSTRING(value, 
+                CHARINDEX('-', value) + 1, 
+                CHARINDEX('-', value, CHARINDEX('-', value) + 1) - 
+                CHARINDEX('-', value) - 1) AS INT) as StartSection,
+            CAST(SUBSTRING(value,
+                CHARINDEX('-', value, CHARINDEX('-', value) + 1) + 1,
+                CHARINDEX('-', value, CHARINDEX('-', value, 
+                    CHARINDEX('-', value) + 1) + 1) - 
+                CHARINDEX('-', value, CHARINDEX('-', value) + 1) - 1) AS INT) as EndSection,
+            CAST(SUBSTRING(value,
+                CHARINDEX('-', value, CHARINDEX('-', value, 
+                    CHARINDEX('-', value) + 1) + 1) + 1,
+                CHARINDEX('-', value, CHARINDEX('-', value, CHARINDEX('-', value, 
+                    CHARINDEX('-', value) + 1) + 1) + 1) - 
+                CHARINDEX('-', value, CHARINDEX('-', value, 
+                    CHARINDEX('-', value) + 1) + 1) - 1) AS INT) as StartWeek,
+            CAST(SUBSTRING(value,
+                CHARINDEX('-', value, CHARINDEX('-', value, CHARINDEX('-', value, 
+                    CHARINDEX('-', value) + 1) + 1) + 1) + 1,
+                CASE 
+                    WHEN CHARINDEX('A', value) > 0 OR CHARINDEX('B', value) > 0 
+                    THEN CHARINDEX('-', value + '-', 
+                         LAST_VALUE(CHARINDEX('-', value)) OVER (ORDER BY (SELECT NULL))) - 
+                         LAST_VALUE(CHARINDEX('-', value)) OVER (ORDER BY (SELECT NULL)) - 1
+                    ELSE LEN(value) - 
+                         LAST_VALUE(CHARINDEX('-', value)) OVER (ORDER BY (SELECT NULL))
+                END) AS INT) as EndWeek,
+            CASE 
+                WHEN CHARINDEX('A', value) > 0 THEN 'A'
+                WHEN CHARINDEX('B', value) > 0 THEN 'B'
+                ELSE NULL 
+            END as WeekType
+        FROM Course c
+        INNER JOIN StudentCourse sc ON c.CourseID = sc.CourseID
+        CROSS APPLY STRING_SPLIT(c.ScheduleTime, ',') st
+        WHERE sc.StudentID = @StudentID
+        AND c.SemesterID = @SemesterID
+    )
+    SELECT 1
+    FROM ParsedNewCourse n
+    CROSS JOIN ParsedExistingCourses e
+    WHERE 
+        -- 检查星期是否相同
+        n.WeekDay = e.WeekDay
+        -- 检查节次是否重叠
+        AND n.StartSection <= e.EndSection 
+        AND e.StartSection <= n.EndSection
+        -- 检查周次是否重叠
+        AND n.StartWeek <= e.EndWeek
+        AND e.StartWeek <= n.EndWeek
+        -- 检查单双周是否冲突
+        AND (
+            (n.WeekType IS NULL AND e.WeekType IS NULL) -- 都是每周
+            OR (n.WeekType IS NULL AND e.WeekType IS NOT NULL) -- 新课每周，已选课单双周
+            OR (n.WeekType IS NOT NULL AND e.WeekType IS NULL) -- 新课单双周，已选课每周
+            OR (n.WeekType = e.WeekType) -- 相同的单双周
+        )";
+
+            using var command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@StudentID", studentId);
+            command.Parameters.AddWithValue("@CourseID", courseId);
+            command.Parameters.AddWithValue("@SemesterID", semesterId);
+
+            var result = await command.ExecuteScalarAsync();
+            return result != null;
         }
 
         // 移除选课
@@ -444,54 +609,215 @@ namespace UniAcamanageWpfApp.Services
             using (var connection = new SqlConnection(_connectionString))
             {
                 await connection.OpenAsync();
-                using (var transaction = connection.BeginTransaction())
+                using var transaction = await connection.BeginTransactionAsync() as SqlTransaction;
+
+                try
                 {
-                    try
+                    // 1. 获取所有要选择的课程的详细信息
+                    var getCoursesSql = @"
+                SELECT 
+                    CourseID,
+                    CourseCode,
+                    ScheduleTime,
+                    Capacity,
+                    (SELECT COUNT(*) FROM StudentCourse WHERE CourseID = c.CourseID) as CurrentCount
+                FROM Course c
+                WHERE CourseCode IN (SELECT value FROM STRING_SPLIT(@CourseCodes, ','))
+                AND SemesterID = @SemesterID";
+
+                    var courseDetails = new List<(int CourseId, string ScheduleTime, int Capacity, int CurrentCount)>();
+
+                    using (var command = new SqlCommand(getCoursesSql, connection, transaction))
                     {
-                        // 1. 删除当前学期的选课记录
-                        var deleteSql = @"
-                            DELETE FROM StudentCourse 
-                            WHERE StudentID = @StudentID 
-                            AND CourseID IN (
-                                SELECT CourseID FROM Course 
-                                WHERE SemesterID = @SemesterID
-                            )";
+                        command.Parameters.AddWithValue("@CourseCodes", string.Join(",", courseCodes));
+                        command.Parameters.AddWithValue("@SemesterID", semesterId);
 
-                        using (var command = new SqlCommand(deleteSql, connection, transaction))
+                        using var reader = await command.ExecuteReaderAsync();
+                        while (await reader.ReadAsync())
                         {
-                            command.Parameters.AddWithValue("@StudentID", GlobalUserState.LinkedID);
-                            command.Parameters.AddWithValue("@SemesterID", semesterId);
-                            await command.ExecuteNonQueryAsync();
+                            courseDetails.Add((
+                                reader.GetInt32(reader.GetOrdinal("CourseID")),
+                                reader.GetString(reader.GetOrdinal("ScheduleTime")),
+                                reader.GetInt32(reader.GetOrdinal("Capacity")),
+                                reader.GetInt32(reader.GetOrdinal("CurrentCount"))
+                            ));
                         }
+                    }
 
-                        // 2. 插入新的选课记录
-                        foreach (var courseCode in courseCodes)
+                    // 2. 检查课程容量
+                    var overCapacityCourses = courseDetails.Where(c => c.CurrentCount >= c.Capacity).ToList();
+                    if (overCapacityCourses.Any())
+                    {
+                        throw new InvalidOperationException("以下课程已达到人数上限：" +
+                            string.Join(", ", overCapacityCourses.Select(c => c.CourseId)));
+                    }
+
+                    // 3. 检查时间冲突
+                    foreach (var course in courseDetails)
+                    {
+                        // 检查与其他要选择的课程的时间冲突
+                        foreach (var otherCourse in courseDetails.Where(c => c.CourseId != course.CourseId))
                         {
-                            var insertSql = @"
-                                INSERT INTO StudentCourse (StudentID, CourseID, SelectionType, SelectionDate)
-                                SELECT @StudentID, CourseID, '待审核', GETDATE()
-                                FROM Course 
-                                WHERE CourseCode = @CourseCode
-                                AND SemesterID = @SemesterID";
-
-                            using (var command = new SqlCommand(insertSql, connection, transaction))
+                            if (await CheckTimeConflictBetweenCourses(course.ScheduleTime, otherCourse.ScheduleTime))
                             {
-                                command.Parameters.AddWithValue("@StudentID", GlobalUserState.LinkedID);
-                                command.Parameters.AddWithValue("@CourseCode", courseCode);
-                                command.Parameters.AddWithValue("@SemesterID", semesterId);
-                                await command.ExecuteNonQueryAsync();
+                                throw new InvalidOperationException($"课程ID {course.CourseId} 与课程ID {otherCourse.CourseId} 存在时间冲突");
                             }
                         }
 
-                        transaction.Commit();
-                        return true;
+                        // 检查与已选课程的时间冲突（排除本次要选的课程）
+                        if (await HasTimeConflict(connection, GlobalUserState.LinkedID, course.CourseId, semesterId))
+                        {
+                            throw new InvalidOperationException($"课程ID {course.CourseId} 与已选课程存在时间冲突");
+                        }
                     }
-                    catch
+
+                    // 4. 删除当前学期的选课记录（排除已确认的选课）
+                    var deleteSql = @"
+                DELETE FROM StudentCourse 
+                WHERE StudentID = @StudentID 
+                AND CourseID IN (
+                    SELECT CourseID 
+                    FROM Course 
+                    WHERE SemesterID = @SemesterID
+                )
+                AND SelectionType = '待审核'";
+
+                    using (var command = new SqlCommand(deleteSql, connection, transaction))
                     {
-                        transaction.Rollback();
-                        throw;
+                        command.Parameters.AddWithValue("@StudentID", GlobalUserState.LinkedID);
+                        command.Parameters.AddWithValue("@SemesterID", semesterId);
+                        await command.ExecuteNonQueryAsync();
                     }
+
+                    // 5. 插入新的选课记录
+                    var insertSql = @"
+                INSERT INTO StudentCourse (StudentID, CourseID, SelectionType, SelectionDate)
+                VALUES (@StudentID, @CourseID, '待审核', @SelectionDate)";
+
+                    foreach (var course in courseDetails)
+                    {
+                        using var command = new SqlCommand(insertSql, connection, transaction);
+                        command.Parameters.AddWithValue("@StudentID", GlobalUserState.LinkedID);
+                        command.Parameters.AddWithValue("@CourseID", course.CourseId);
+                        command.Parameters.AddWithValue("@SelectionDate", DateTime.Now);
+                        await command.ExecuteNonQueryAsync();
+                    }
+
+                    await transaction.CommitAsync();
+                    return true;
                 }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+        }
+
+        // 添加一个新的辅助方法用于检查两个课程之间的时间冲突
+        private async Task<bool> CheckTimeConflictBetweenCourses(string scheduleTime1, string scheduleTime2)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+
+                var sql = @"
+        WITH ParsedTime1 AS (
+            SELECT 
+                CAST(SUBSTRING(value, 1, CHARINDEX('-', value) - 1) AS INT) as WeekDay,
+                CAST(SUBSTRING(value, 
+                    CHARINDEX('-', value) + 1, 
+                    CHARINDEX('-', value, CHARINDEX('-', value) + 1) - 
+                    CHARINDEX('-', value) - 1) AS INT) as StartSection,
+                CAST(SUBSTRING(value,
+                    CHARINDEX('-', value, CHARINDEX('-', value) + 1) + 1,
+                    CHARINDEX('-', value, CHARINDEX('-', value, 
+                        CHARINDEX('-', value) + 1) + 1) - 
+                    CHARINDEX('-', value, CHARINDEX('-', value) + 1) - 1) AS INT) as EndSection,
+                CAST(SUBSTRING(value,
+                    CHARINDEX('-', value, CHARINDEX('-', value, 
+                        CHARINDEX('-', value) + 1) + 1) + 1,
+                    CHARINDEX('-', value, CHARINDEX('-', value, CHARINDEX('-', value, 
+                        CHARINDEX('-', value) + 1) + 1) + 1) - 
+                    CHARINDEX('-', value, CHARINDEX('-', value, 
+                        CHARINDEX('-', value) + 1) + 1) - 1) AS INT) as StartWeek,
+                CAST(SUBSTRING(value,
+                    CHARINDEX('-', value, CHARINDEX('-', value, CHARINDEX('-', value, 
+                        CHARINDEX('-', value) + 1) + 1) + 1) + 1,
+                    CASE 
+                        WHEN CHARINDEX('A', value) > 0 OR CHARINDEX('B', value) > 0 
+                        THEN CHARINDEX('-', value + '-', 
+                             LAST_VALUE(CHARINDEX('-', value)) OVER (ORDER BY (SELECT NULL))) - 
+                             LAST_VALUE(CHARINDEX('-', value)) OVER (ORDER BY (SELECT NULL)) - 1
+                        ELSE LEN(value) - 
+                             LAST_VALUE(CHARINDEX('-', value)) OVER (ORDER BY (SELECT NULL))
+                    END) AS INT) as EndWeek,
+                CASE 
+                    WHEN CHARINDEX('A', value) > 0 THEN 'A'
+                    WHEN CHARINDEX('B', value) > 0 THEN 'B'
+                    ELSE NULL 
+                END as WeekType
+            FROM STRING_SPLIT(@ScheduleTime1, ',')
+        ),
+        ParsedTime2 AS (
+            SELECT 
+                CAST(SUBSTRING(value, 1, CHARINDEX('-', value) - 1) AS INT) as WeekDay,
+                CAST(SUBSTRING(value, 
+                    CHARINDEX('-', value) + 1, 
+                    CHARINDEX('-', value, CHARINDEX('-', value) + 1) - 
+                    CHARINDEX('-', value) - 1) AS INT) as StartSection,
+                CAST(SUBSTRING(value,
+                    CHARINDEX('-', value, CHARINDEX('-', value) + 1) + 1,
+                    CHARINDEX('-', value, CHARINDEX('-', value, 
+                        CHARINDEX('-', value) + 1) + 1) - 
+                    CHARINDEX('-', value, CHARINDEX('-', value) + 1) - 1) AS INT) as EndSection,
+                CAST(SUBSTRING(value,
+                    CHARINDEX('-', value, CHARINDEX('-', value, 
+                        CHARINDEX('-', value) + 1) + 1) + 1,
+                    CHARINDEX('-', value, CHARINDEX('-', value, CHARINDEX('-', value, 
+                        CHARINDEX('-', value) + 1) + 1) + 1) - 
+                    CHARINDEX('-', value, CHARINDEX('-', value, 
+                        CHARINDEX('-', value) + 1) + 1) - 1) AS INT) as StartWeek,
+                CAST(SUBSTRING(value,
+                    CHARINDEX('-', value, CHARINDEX('-', value, CHARINDEX('-', value, 
+                        CHARINDEX('-', value) + 1) + 1) + 1) + 1,
+                    CASE 
+                        WHEN CHARINDEX('A', value) > 0 OR CHARINDEX('B', value) > 0 
+                        THEN CHARINDEX('-', value + '-', 
+                             LAST_VALUE(CHARINDEX('-', value)) OVER (ORDER BY (SELECT NULL))) - 
+                             LAST_VALUE(CHARINDEX('-', value)) OVER (ORDER BY (SELECT NULL)) - 1
+                        ELSE LEN(value) - 
+                             LAST_VALUE(CHARINDEX('-', value)) OVER (ORDER BY (SELECT NULL))
+                    END) AS INT) as EndWeek,
+                CASE 
+                    WHEN CHARINDEX('A', value) > 0 THEN 'A'
+                    WHEN CHARINDEX('B', value) > 0 THEN 'B'
+                    ELSE NULL 
+                END as WeekType
+            FROM STRING_SPLIT(@ScheduleTime2, ',')
+        )
+        SELECT 1
+        FROM ParsedTime1 t1
+        CROSS JOIN ParsedTime2 t2
+        WHERE 
+            t1.WeekDay = t2.WeekDay
+            AND t1.StartSection <= t2.EndSection 
+            AND t2.StartSection <= t1.EndSection
+            AND t1.StartWeek <= t2.EndWeek
+            AND t2.StartWeek <= t1.EndWeek
+            AND (
+                (t1.WeekType IS NULL AND t2.WeekType IS NULL)
+                OR (t1.WeekType IS NULL AND t2.WeekType IS NOT NULL)
+                OR (t1.WeekType IS NOT NULL AND t2.WeekType IS NULL)
+                OR (t1.WeekType = t2.WeekType)
+            )";
+
+                using var command = new SqlCommand(sql, connection);
+                command.Parameters.AddWithValue("@ScheduleTime1", scheduleTime1);
+                command.Parameters.AddWithValue("@ScheduleTime2", scheduleTime2);
+
+                var result = await command.ExecuteScalarAsync();
+                return result != null;
             }
         }
     }

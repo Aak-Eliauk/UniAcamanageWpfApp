@@ -9,6 +9,10 @@ using System.Windows.Media.Animation;
 using System.Linq;
 using System.Windows.Threading;
 using System.ComponentModel;
+using UniAcamanageWpfApp.Utils.Schedule;
+using System.Windows.Input;
+using System.Windows.Data;
+using System.Diagnostics;
 
 namespace UniAcamanageWpfApp.Views
 {
@@ -146,17 +150,24 @@ namespace UniAcamanageWpfApp.Views
         {
             try
             {
+                // 先获取当前学期
+                var currentSemester = GetCurrentSemester(DateTime.Now);
+                if (currentSemester == null)
+                {
+                    MessageBox.Show("获取当前学期信息失败！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
                 string query = @"
-                    SELECT s.SemesterID,
-                           s.SemesterName,
-                           ay.YearName,
-                           CASE 
-                                WHEN GETDATE() BETWEEN s.StartDate AND s.EndDate THEN 1 
-                                ELSE 0 
-                           END AS IsCurrent
-                    FROM Semester s
-                    INNER JOIN AcademicYear ay ON s.AcademicYearID = ay.AcademicYearID
-                    ORDER BY s.StartDate DESC";
+            SELECT 
+                s.SemesterID,
+                s.SemesterName,
+                ay.YearName,
+                s.StartDate,
+                s.EndDate
+            FROM Semester s
+            INNER JOIN AcademicYear ay ON s.AcademicYearID = ay.AcademicYearID
+            ORDER BY s.StartDate DESC";
 
                 var dt = ExecuteQuery(query);
                 var semesterList = dt.AsEnumerable()
@@ -164,7 +175,7 @@ namespace UniAcamanageWpfApp.Views
                     {
                         SemesterID = row.Field<int>("SemesterID"),
                         DisplayName = $"{row.Field<string>("YearName")} {row.Field<string>("SemesterName")}",
-                        IsCurrent = row.Field<int>("IsCurrent") == 1
+                        IsCurrent = row.Field<int>("SemesterID") == currentSemester.SemesterID
                     })
                     .ToList();
 
@@ -179,13 +190,11 @@ namespace UniAcamanageWpfApp.Views
                 ExamSemesterComboBox.SelectedValuePath = "SemesterID";
 
                 // 选择当前学期
-                var currentSemester = semesterList.FirstOrDefault(s => s.IsCurrent);
-                if (currentSemester != null)
-                {
-                    SemesterComboBox.SelectedValue = currentSemester.SemesterID;
-                    ExamSemesterComboBox.SelectedValue = currentSemester.SemesterID;
-                }
-                else if (semesterList.Any())
+                SemesterComboBox.SelectedValue = currentSemester.SemesterID;
+                ExamSemesterComboBox.SelectedValue = currentSemester.SemesterID;
+
+                // 如果没有选中任何学期，则选择第一个
+                if (SemesterComboBox.SelectedValue == null && semesterList.Any())
                 {
                     SemesterComboBox.SelectedIndex = 0;
                     ExamSemesterComboBox.SelectedIndex = 0;
@@ -214,28 +223,103 @@ namespace UniAcamanageWpfApp.Views
                 string studentID = GlobalUserState.LinkedID;
 
                 string query = @"
-                    SELECT 
-                        c.CourseCode,
-                        c.CourseName,
-                        c.CourseType,
-                        c.Credit,
-                        c.ScheduleTime,
-                        cr.RoomNumber as Classroom,
-                        t.Name as TeacherName
-                    FROM StudentCourse sc
-                    INNER JOIN Course c ON sc.CourseID = c.CourseID
-                    LEFT JOIN Classroom cr ON c.ClassroomID = cr.ClassroomID
-                    LEFT JOIN TeacherCourse tc ON c.CourseID = tc.CourseID
-                    LEFT JOIN Teacher t ON tc.TeacherID = t.TeacherID
-                    WHERE sc.StudentID = @studentID
-                    AND c.SemesterID = @semesterID
-                    ORDER BY c.CourseCode";
+            WITH ParsedSchedule AS (
+                SELECT 
+                    c.CourseID,
+                    c.CourseCode,
+                    c.CourseName,
+                    c.CourseType,
+                    c.Credit,
+                    cr.RoomNumber as Classroom,
+                    t.Name as TeacherName,
+                    value AS SingleSchedule
+                FROM Course c
+                CROSS APPLY STRING_SPLIT(c.ScheduleTime, ',')
+                LEFT JOIN Classroom cr ON c.ClassroomID = cr.ClassroomID
+                LEFT JOIN TeacherCourse tc ON c.CourseID = tc.CourseID
+                LEFT JOIN Teacher t ON tc.TeacherID = t.TeacherID
+                WHERE c.SemesterID = @semesterID
+            )
+            SELECT 
+                ps.CourseCode,
+                ps.CourseName,
+                ps.CourseType,
+                ps.Credit,
+                STUFF((
+                    SELECT CHAR(13) + CHAR(10) + 
+                           CASE LEFT(p.SingleSchedule, 1)
+                                WHEN '1' THEN '周一'
+                                WHEN '2' THEN '周二'
+                                WHEN '3' THEN '周三'
+                                WHEN '4' THEN '周四'
+                                WHEN '5' THEN '周五'
+                                WHEN '6' THEN '周六'
+                                WHEN '7' THEN '周日'
+                           END + 
+                           ' 第' + 
+                           SUBSTRING(p.SingleSchedule, 
+                                CHARINDEX('-', p.SingleSchedule) + 1,
+                                CHARINDEX('-', p.SingleSchedule, CHARINDEX('-', p.SingleSchedule) + 1) - 
+                                CHARINDEX('-', p.SingleSchedule) - 1) +
+                           '-' +
+                           SUBSTRING(p.SingleSchedule,
+                                CHARINDEX('-', p.SingleSchedule, CHARINDEX('-', p.SingleSchedule) + 1) + 1,
+                                CHARINDEX('-', p.SingleSchedule, CHARINDEX('-', p.SingleSchedule, 
+                                    CHARINDEX('-', p.SingleSchedule) + 1) + 1) - 
+                                CHARINDEX('-', p.SingleSchedule, CHARINDEX('-', p.SingleSchedule) + 1) - 1) +
+                           '节 第' +
+                           SUBSTRING(p.SingleSchedule,
+                                CHARINDEX('-', p.SingleSchedule, CHARINDEX('-', p.SingleSchedule, 
+                                    CHARINDEX('-', p.SingleSchedule) + 1) + 1) + 1,
+                                CHARINDEX('-', p.SingleSchedule, CHARINDEX('-', p.SingleSchedule, 
+                                    CHARINDEX('-', p.SingleSchedule, CHARINDEX('-', p.SingleSchedule) + 1) + 1) + 1) - 
+                                CHARINDEX('-', p.SingleSchedule, CHARINDEX('-', p.SingleSchedule, 
+                                    CHARINDEX('-', p.SingleSchedule) + 1) + 1) - 1) +
+                           '-' +
+                           CASE 
+                                WHEN CHARINDEX('A', p.SingleSchedule) > 0 OR CHARINDEX('B', p.SingleSchedule) > 0
+                                THEN SUBSTRING(p.SingleSchedule,
+                                    CHARINDEX('-', p.SingleSchedule, CHARINDEX('-', p.SingleSchedule, 
+                                        CHARINDEX('-', p.SingleSchedule, CHARINDEX('-', p.SingleSchedule) + 1) + 1) + 1) + 1,
+                                    CHARINDEX('A', p.SingleSchedule + 'A') - 
+                                    CHARINDEX('-', p.SingleSchedule, CHARINDEX('-', p.SingleSchedule, 
+                                        CHARINDEX('-', p.SingleSchedule, CHARINDEX('-', p.SingleSchedule) + 1) + 1) + 1) - 1)
+                                ELSE SUBSTRING(p.SingleSchedule,
+                                    CHARINDEX('-', p.SingleSchedule, CHARINDEX('-', p.SingleSchedule, 
+                                        CHARINDEX('-', p.SingleSchedule, CHARINDEX('-', p.SingleSchedule) + 1) + 1) + 1) + 1,
+                                    LEN(p.SingleSchedule) - 
+                                    CHARINDEX('-', p.SingleSchedule, CHARINDEX('-', p.SingleSchedule, 
+                                        CHARINDEX('-', p.SingleSchedule, CHARINDEX('-', p.SingleSchedule) + 1) + 1) + 1))
+                           END +
+                           '周' +
+                           CASE RIGHT(p.SingleSchedule, 1)
+                                WHEN 'A' THEN ' [单周]'
+                                WHEN 'B' THEN ' [双周]'
+                                ELSE ''
+                           END
+                    FROM ParsedSchedule p
+                    WHERE p.CourseID = ps.CourseID
+                    FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS ClassTime,
+                ps.Classroom,
+                ps.TeacherName
+            FROM ParsedSchedule ps
+            INNER JOIN StudentCourse sc ON ps.CourseID = sc.CourseID
+            WHERE sc.StudentID = @studentID
+            GROUP BY 
+                ps.CourseID,
+                ps.CourseCode,
+                ps.CourseName,
+                ps.CourseType,
+                ps.Credit,
+                ps.Classroom,
+                ps.TeacherName
+            ORDER BY ps.CourseCode";
 
                 var parameters = new[]
                 {
-                    new SqlParameter("@studentID", studentID),
-                    new SqlParameter("@semesterID", semesterID)
-                };
+            new SqlParameter("@studentID", studentID),
+            new SqlParameter("@semesterID", semesterID)
+        };
 
                 var dt = ExecuteQuery(query, parameters);
                 ScheduleDataGrid.ItemsSource = dt.DefaultView;
@@ -263,22 +347,60 @@ namespace UniAcamanageWpfApp.Views
 
             try
             {
+                // 保持原有的模糊查询SQL
                 string query = @"
-                    SELECT TOP 10
-                        c.CourseCode,
-                        c.CourseName,
-                        t.Name as TeacherName
-                    FROM Course c
-                    LEFT JOIN TeacherCourse tc ON c.CourseID = tc.CourseID
-                    LEFT JOIN Teacher t ON tc.TeacherID = t.TeacherID
-                    WHERE c.SemesterID = (
-                        SELECT TOP 1 SemesterID 
-                        FROM Semester 
-                        WHERE GETDATE() BETWEEN StartDate AND EndDate
-                    )
-                    AND (c.CourseCode LIKE @searchText 
-                         OR c.CourseName LIKE @searchText)
-                    ORDER BY c.CourseCode";
+            WITH CurrentSemester AS (
+                SELECT TOP 1 SemesterID
+                FROM Semester 
+                WHERE GETDATE() BETWEEN StartDate AND EndDate
+                ORDER BY StartDate DESC
+            )
+            SELECT TOP 10
+                c.CourseCode,
+                c.CourseName,
+                c.CourseType,
+                STRING_AGG(t.Name, '/') as TeacherNames,
+                c.Credit,
+                s.SemesterName,
+                ay.YearName,
+                CONCAT(
+                    (SELECT COUNT(*) FROM StudentCourse sc WHERE sc.CourseID = c.CourseID),
+                    '/',
+                    c.Capacity
+                ) as EnrollmentStatus,
+                CASE 
+                    WHEN c.SemesterID = (SELECT SemesterID FROM CurrentSemester) THEN '(当前学期)'
+                    ELSE ''
+                END as CurrentSemesterFlag
+            FROM Course c
+            INNER JOIN Semester s ON c.SemesterID = s.SemesterID
+            INNER JOIN AcademicYear ay ON s.AcademicYearID = ay.AcademicYearID
+            LEFT JOIN TeacherCourse tc ON c.CourseID = tc.CourseID
+            LEFT JOIN Teacher t ON tc.TeacherID = t.TeacherID
+            WHERE (
+                c.CourseCode LIKE @searchText 
+                OR c.CourseName LIKE @searchText
+                OR t.Name LIKE @searchText
+            )
+            GROUP BY 
+                c.CourseID,
+                c.CourseCode,
+                c.CourseName,
+                c.CourseType,
+                c.Credit,
+                c.Capacity,
+                s.SemesterName,
+                ay.YearName,
+                c.SemesterID
+            ORDER BY 
+                CASE WHEN c.SemesterID = (SELECT SemesterID FROM CurrentSemester) THEN 0 ELSE 1 END,
+                s.SemesterName DESC,
+                CASE 
+                    WHEN c.CourseCode LIKE @searchText THEN 1
+                    WHEN c.CourseName LIKE @searchText THEN 2
+                    ELSE 3
+                END,
+                c.CourseCode";
 
                 var dt = ExecuteQuery(query,
                     new SqlParameter("@searchText", $"%{searchText}%"));
@@ -286,8 +408,14 @@ namespace UniAcamanageWpfApp.Views
                 if (dt.Rows.Count > 0)
                 {
                     CourseSearchResultListBox.ItemsSource = dt.AsEnumerable()
-                        .Select(row => $"{row["CourseCode"]} - {row["CourseName"]} ({row["TeacherName"]})")
+                        .Select(row => new
+                        {
+                            DisplayText = $"{row["CourseCode"]} - {row["CourseName"]}",
+                            CourseCode = row["CourseCode"].ToString()
+                        })
                         .ToList();
+                    CourseSearchResultListBox.DisplayMemberPath = "DisplayText";
+                    CourseSearchResultListBox.SelectedValuePath = "CourseCode";
                     CourseSearchResultListBox.Visibility = Visibility.Visible;
                 }
                 else
@@ -297,28 +425,43 @@ namespace UniAcamanageWpfApp.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"搜索课程时出错: {ex.Message}");
+                MessageBox.Show($"搜索课程时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
+        // 添加选择事件处理
         private void CourseSearchResultListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (CourseSearchResultListBox.SelectedItem != null)
             {
-                string selected = CourseSearchResultListBox.SelectedItem.ToString();
-                string courseCode = selected.Split('-')[0].Trim();
-                CourseSearchTextBox.Text = courseCode;
-                CourseSearchResultListBox.Visibility = Visibility.Collapsed;
-                QueryCourseSchedule(null, null);
+                try
+                {
+                    dynamic selected = CourseSearchResultListBox.SelectedItem;
+                    string courseCode = selected.CourseCode;
+
+                    // 更新搜索框文本
+                    CourseSearchTextBox.Text = courseCode;
+
+                    // 隐藏搜索结果
+                    CourseSearchResultListBox.Visibility = Visibility.Collapsed;
+
+                    // 执行查询
+                    QueryCourseSchedule(null, null);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"选择课程时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
+
 
         private void QueryCourseSchedule(object sender, RoutedEventArgs e)
         {
             string courseCode = CourseSearchTextBox.Text.Trim();
             if (string.IsNullOrEmpty(courseCode))
             {
-                MessageBox.Show("请输入课程代码或名称！");
+                MessageBox.Show("请输入课程代码或名称！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -326,35 +469,146 @@ namespace UniAcamanageWpfApp.Views
             {
                 ShowLoading();
                 string query = @"
-                    SELECT 
-                        c.CourseCode,
-                        c.CourseName,
-                        c.CourseType,
-                        c.Credit,
-                        c.ScheduleTime,
-                        cr.RoomNumber as Classroom,
-                        t.Name as TeacherName,
-                        c.Capacity,
-                        (SELECT COUNT(*) FROM StudentCourse sc WHERE sc.CourseID = c.CourseID) as EnrolledCount
-                    FROM Course c
-                    LEFT JOIN Classroom cr ON c.ClassroomID = cr.ClassroomID
-                    LEFT JOIN TeacherCourse tc ON c.CourseID = tc.CourseID
-                    LEFT JOIN Teacher t ON tc.TeacherID = t.TeacherID
-                    WHERE c.CourseCode LIKE @courseCode
-                    AND c.SemesterID = (
-                        SELECT TOP 1 SemesterID 
-                        FROM Semester 
-                        WHERE GETDATE() BETWEEN StartDate AND EndDate
-                    )";
+            WITH SplitSchedule AS (
+                SELECT 
+                    c.CourseID,
+                    c.CourseCode,
+                    c.CourseName,
+                    c.CourseType,
+                    c.Credit,
+                    c.Capacity,
+                    c.ClassroomID,
+                    c.SemesterID,
+                    value AS SingleSchedule
+                FROM Course c
+                CROSS APPLY STRING_SPLIT(c.ScheduleTime, ',')
+            )
+            SELECT 
+                s.CourseCode,
+                s.CourseName,
+                s.CourseType,
+                s.Credit,
+                STUFF((
+                    SELECT CHAR(13) + CHAR(10) + 
+                           CASE LEFT(sp2.SingleSchedule, 1)
+                                WHEN '1' THEN '周一'
+                                WHEN '2' THEN '周二'
+                                WHEN '3' THEN '周三'
+                                WHEN '4' THEN '周四'
+                                WHEN '5' THEN '周五'
+                                WHEN '6' THEN '周六'
+                                WHEN '7' THEN '周日'
+                           END + 
+                           ' 第' + 
+                           SUBSTRING(sp2.SingleSchedule, 
+                                CHARINDEX('-', sp2.SingleSchedule) + 1,
+                                CHARINDEX('-', sp2.SingleSchedule, CHARINDEX('-', sp2.SingleSchedule) + 1) - 
+                                CHARINDEX('-', sp2.SingleSchedule) - 1) +
+                           '-' +
+                           SUBSTRING(sp2.SingleSchedule,
+                                CHARINDEX('-', sp2.SingleSchedule, CHARINDEX('-', sp2.SingleSchedule) + 1) + 1,
+                                CHARINDEX('-', sp2.SingleSchedule, CHARINDEX('-', sp2.SingleSchedule, 
+                                    CHARINDEX('-', sp2.SingleSchedule) + 1) + 1) - 
+                                CHARINDEX('-', sp2.SingleSchedule, CHARINDEX('-', sp2.SingleSchedule) + 1) - 1) +
+                           '节 第' +
+                           SUBSTRING(sp2.SingleSchedule,
+                                CHARINDEX('-', sp2.SingleSchedule, CHARINDEX('-', sp2.SingleSchedule, 
+                                    CHARINDEX('-', sp2.SingleSchedule) + 1) + 1) + 1,
+                                CHARINDEX('-', sp2.SingleSchedule, CHARINDEX('-', sp2.SingleSchedule, 
+                                    CHARINDEX('-', sp2.SingleSchedule, CHARINDEX('-', sp2.SingleSchedule) + 1) + 1) + 1) - 
+                                CHARINDEX('-', sp2.SingleSchedule, CHARINDEX('-', sp2.SingleSchedule, 
+                                    CHARINDEX('-', sp2.SingleSchedule) + 1) + 1) - 1) +
+                           '-' +
+                           CASE 
+                                WHEN CHARINDEX('A', sp2.SingleSchedule) > 0 OR CHARINDEX('B', sp2.SingleSchedule) > 0
+                                THEN SUBSTRING(sp2.SingleSchedule,
+                                    CHARINDEX('-', sp2.SingleSchedule, CHARINDEX('-', sp2.SingleSchedule, 
+                                        CHARINDEX('-', sp2.SingleSchedule, CHARINDEX('-', sp2.SingleSchedule) + 1) + 1) + 1) + 1,
+                                    CHARINDEX('A', sp2.SingleSchedule + 'A') - 
+                                    CHARINDEX('-', sp2.SingleSchedule, CHARINDEX('-', sp2.SingleSchedule, 
+                                        CHARINDEX('-', sp2.SingleSchedule, CHARINDEX('-', sp2.SingleSchedule) + 1) + 1) + 1) - 1)
+                                ELSE SUBSTRING(sp2.SingleSchedule,
+                                    CHARINDEX('-', sp2.SingleSchedule, CHARINDEX('-', sp2.SingleSchedule, 
+                                        CHARINDEX('-', sp2.SingleSchedule, CHARINDEX('-', sp2.SingleSchedule) + 1) + 1) + 1) + 1,
+                                    LEN(sp2.SingleSchedule) - 
+                                    CHARINDEX('-', sp2.SingleSchedule, CHARINDEX('-', sp2.SingleSchedule, 
+                                        CHARINDEX('-', sp2.SingleSchedule, CHARINDEX('-', sp2.SingleSchedule) + 1) + 1) + 1))
+                           END +
+                           '周' +
+                           CASE RIGHT(sp2.SingleSchedule, 1)
+                                WHEN 'A' THEN ' [单周]'
+                                WHEN 'B' THEN ' [双周]'
+                                ELSE ''
+                           END
+                    FROM SplitSchedule sp2
+                    WHERE sp2.CourseID = s.CourseID
+                    FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS ClassTime,
+                cr.RoomNumber as Classroom,
+                STUFF((
+                    SELECT '/' + t2.Name
+                    FROM TeacherCourse tc2
+                    JOIN Teacher t2 ON tc2.TeacherID = t2.TeacherID
+                    WHERE tc2.CourseID = s.CourseID
+                    FOR XML PATH('')), 1, 1, '') as TeacherName,
+                CONCAT(s.Capacity, ' (已选', 
+                    (SELECT COUNT(*) FROM StudentCourse sc WHERE sc.CourseID = s.CourseID),
+                    '人)') as Capacity,
+                CONCAT(ay.YearName, ' ', sem.SemesterName) as Semester,
+                sem.StartDate
+            FROM SplitSchedule s
+            INNER JOIN Semester sem ON s.SemesterID = sem.SemesterID
+            INNER JOIN AcademicYear ay ON sem.AcademicYearID = ay.AcademicYearID
+            LEFT JOIN Classroom cr ON s.ClassroomID = cr.ClassroomID
+            WHERE s.CourseCode LIKE @courseCode
+               OR s.CourseName LIKE @courseCode
+            GROUP BY 
+                s.CourseID,
+                s.CourseCode,
+                s.CourseName,
+                s.CourseType,
+                s.Credit,
+                s.Capacity,
+                cr.RoomNumber,
+                ay.YearName,
+                sem.SemesterName,
+                sem.StartDate
+            ORDER BY sem.StartDate DESC";
 
                 var dt = ExecuteQuery(query,
                     new SqlParameter("@courseCode", $"%{courseCode}%"));
 
+                if (dt.Rows.Count == 0)
+                {
+                    MessageBox.Show("未找到相关课程信息！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    CourseScheduleDataGrid.ItemsSource = null;
+                    return;
+                }
+
+                // 在设置 ItemsSource 之前清除现有的数据
+                CourseScheduleDataGrid.ItemsSource = null;
+                CourseScheduleDataGrid.Items.Clear();
+
+                // 重新设置 ItemsSource
                 CourseScheduleDataGrid.ItemsSource = dt.DefaultView;
+
+                // 强制刷新 DataGrid
+                CourseScheduleDataGrid.UpdateLayout();
+
+                // 如果需要，可以手动设置每行的高度
+                foreach (var item in CourseScheduleDataGrid.Items)
+                {
+                    var row = (DataGridRow)CourseScheduleDataGrid.ItemContainerGenerator
+                        .ContainerFromItem(item);
+                    if (row != null)
+                    {
+                        row.Height = Double.NaN; // Auto
+                        row.UpdateLayout();
+                    }
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"查询课程失败: {ex.Message}");
+                MessageBox.Show($"查询课程失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -362,6 +616,7 @@ namespace UniAcamanageWpfApp.Views
             }
         }
         #endregion
+
         private void SemesterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             try
@@ -428,45 +683,125 @@ namespace UniAcamanageWpfApp.Views
             string teacherSearch = TeacherIDTextBox.Text.Trim();
             if (string.IsNullOrEmpty(teacherSearch))
             {
-                MessageBox.Show("请输入教师工号或姓名！");
+                MessageBox.Show("请输入教师工号或姓名！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             try
             {
                 ShowLoading();
-                UpdateQueryTime(); // 更新查询时间
+                UpdateQueryTime();
 
                 string query = @"
-                    SELECT 
-                        t.TeacherID,
-                        t.Name as TeacherName,
-                        c.CourseCode,
-                        c.CourseName,
-                        c.ScheduleTime,
-                        cr.RoomNumber as Classroom,
-                        (SELECT COUNT(*) FROM StudentCourse sc WHERE sc.CourseID = c.CourseID) as StudentCount,
-                        c.Capacity
-                    FROM Teacher t
-                    INNER JOIN TeacherCourse tc ON t.TeacherID = tc.TeacherID
-                    INNER JOIN Course c ON tc.CourseID = c.CourseID
-                    LEFT JOIN Classroom cr ON c.ClassroomID = cr.ClassroomID
-                    WHERE (t.TeacherID LIKE @searchText OR t.Name LIKE @searchText)
-                    AND c.SemesterID = (
-                        SELECT TOP 1 SemesterID 
-                        FROM Semester 
-                        WHERE GETDATE() BETWEEN StartDate AND EndDate
-                    )
-                    ORDER BY c.ScheduleTime";
+            WITH ParsedSchedule AS (
+                SELECT 
+                    c.CourseID,
+                    value AS SingleSchedule
+                FROM Course c
+                CROSS APPLY STRING_SPLIT(c.ScheduleTime, ',')
+            )
+            SELECT 
+                t.TeacherID,
+                t.Name as TeacherName,
+                c.CourseCode,
+                c.CourseName,
+                STUFF((
+                    SELECT CHAR(13) + CHAR(10) + 
+                           CASE LEFT(ps.SingleSchedule, 1)
+                                WHEN '1' THEN '周一'
+                                WHEN '2' THEN '周二'
+                                WHEN '3' THEN '周三'
+                                WHEN '4' THEN '周四'
+                                WHEN '5' THEN '周五'
+                                WHEN '6' THEN '周六'
+                                WHEN '7' THEN '周日'
+                           END + 
+                           ' 第' + 
+                           SUBSTRING(ps.SingleSchedule, 
+                                CHARINDEX('-', ps.SingleSchedule) + 1,
+                                CHARINDEX('-', ps.SingleSchedule, CHARINDEX('-', ps.SingleSchedule) + 1) - 
+                                CHARINDEX('-', ps.SingleSchedule) - 1) +
+                           '-' +
+                           SUBSTRING(ps.SingleSchedule,
+                                CHARINDEX('-', ps.SingleSchedule, CHARINDEX('-', ps.SingleSchedule) + 1) + 1,
+                                CHARINDEX('-', ps.SingleSchedule, CHARINDEX('-', ps.SingleSchedule, 
+                                    CHARINDEX('-', ps.SingleSchedule) + 1) + 1) - 
+                                CHARINDEX('-', ps.SingleSchedule, CHARINDEX('-', ps.SingleSchedule) + 1) - 1) +
+                           '节 第' +
+                           SUBSTRING(ps.SingleSchedule,
+                                CHARINDEX('-', ps.SingleSchedule, CHARINDEX('-', ps.SingleSchedule, 
+                                    CHARINDEX('-', ps.SingleSchedule) + 1) + 1) + 1,
+                                CHARINDEX('-', ps.SingleSchedule, CHARINDEX('-', ps.SingleSchedule, 
+                                    CHARINDEX('-', ps.SingleSchedule, CHARINDEX('-', ps.SingleSchedule) + 1) + 1) + 1) - 
+                                CHARINDEX('-', ps.SingleSchedule, CHARINDEX('-', ps.SingleSchedule, 
+                                    CHARINDEX('-', ps.SingleSchedule) + 1) + 1) - 1) +
+                           '-' +
+                           CASE 
+                                WHEN CHARINDEX('A', ps.SingleSchedule) > 0 OR CHARINDEX('B', ps.SingleSchedule) > 0
+                                THEN SUBSTRING(ps.SingleSchedule,
+                                    CHARINDEX('-', ps.SingleSchedule, CHARINDEX('-', ps.SingleSchedule, 
+                                        CHARINDEX('-', ps.SingleSchedule, CHARINDEX('-', ps.SingleSchedule) + 1) + 1) + 1) + 1,
+                                    CHARINDEX('A', ps.SingleSchedule + 'A') - 
+                                    CHARINDEX('-', ps.SingleSchedule, CHARINDEX('-', ps.SingleSchedule, 
+                                        CHARINDEX('-', ps.SingleSchedule, CHARINDEX('-', ps.SingleSchedule) + 1) + 1) + 1) - 1)
+                                ELSE SUBSTRING(ps.SingleSchedule,
+                                    CHARINDEX('-', ps.SingleSchedule, CHARINDEX('-', ps.SingleSchedule, 
+                                        CHARINDEX('-', ps.SingleSchedule, CHARINDEX('-', ps.SingleSchedule) + 1) + 1) + 1) + 1,
+                                    LEN(ps.SingleSchedule) - 
+                                    CHARINDEX('-', ps.SingleSchedule, CHARINDEX('-', ps.SingleSchedule, 
+                                        CHARINDEX('-', ps.SingleSchedule, CHARINDEX('-', ps.SingleSchedule) + 1) + 1) + 1))
+                           END +
+                           '周' +
+                           CASE RIGHT(ps.SingleSchedule, 1)
+                                WHEN 'A' THEN ' [单周]'
+                                WHEN 'B' THEN ' [双周]'
+                                ELSE ''
+                           END
+                    FROM ParsedSchedule ps
+                    WHERE ps.CourseID = c.CourseID
+                    FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS ClassTime,
+                cr.RoomNumber as Classroom,
+                CONCAT((SELECT COUNT(*) FROM StudentCourse sc WHERE sc.CourseID = c.CourseID), 
+                       '/', c.Capacity) as StudentCount,
+                d.DepartmentName,
+                CONCAT(ay.YearName, ' ', s.SemesterName) as Semester
+            FROM Teacher t
+            INNER JOIN TeacherCourse tc ON t.TeacherID = tc.TeacherID
+            INNER JOIN Course c ON tc.CourseID = c.CourseID
+            INNER JOIN Department d ON t.DepartmentID = d.DepartmentID
+            INNER JOIN Semester s ON c.SemesterID = s.SemesterID
+            INNER JOIN AcademicYear ay ON s.AcademicYearID = ay.AcademicYearID
+            LEFT JOIN Classroom cr ON c.ClassroomID = cr.ClassroomID
+            WHERE (t.TeacherID LIKE @searchText OR t.Name LIKE @searchText)
+            GROUP BY 
+                t.TeacherID,
+                t.Name,
+                c.CourseID,
+                c.CourseCode,
+                c.CourseName,
+                cr.RoomNumber,
+                c.Capacity,
+                d.DepartmentName,
+                ay.YearName,
+                s.SemesterName,
+                s.StartDate
+            ORDER BY s.StartDate DESC, c.CourseCode";
 
                 var dt = ExecuteQuery(query,
                     new SqlParameter("@searchText", $"%{teacherSearch}%"));
+
+                if (dt.Rows.Count == 0)
+                {
+                    MessageBox.Show("未找到相关教师课表信息！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    TeacherScheduleDataGrid.ItemsSource = null;
+                    return;
+                }
 
                 TeacherScheduleDataGrid.ItemsSource = dt.DefaultView;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"查询教师课表失败: {ex.Message}");
+                MessageBox.Show($"查询教师课表失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -505,37 +840,144 @@ namespace UniAcamanageWpfApp.Views
             try
             {
                 ShowLoading();
-                UpdateQueryTime(); // 更新查询时间
+                UpdateQueryTime();
 
                 DateTime queryDate = ClassroomDatePicker.SelectedDate ?? DateTime.Today;
                 string timeSlot = ((ComboBoxItem)ClassroomTimeSlotComboBox.SelectedItem)?.Content.ToString() ?? "全天";
 
-                string timeCondition = GetTimeCondition(timeSlot);
+                // 1. 计算当前周次和星期几
+                var semester = GetCurrentSemester(queryDate);
+                if (semester == null)
+                {
+                    MessageBox.Show("所选日期不在任何学期内！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
 
-                string query = $@"
-                    SELECT 
-                        cr.RoomNumber,
-                        cr.Floor,
-                        cr.Capacity,
-                        cr.SpatialLocation,
+                // 修正周次计算逻辑
+                int weekNumber = (int)Math.Ceiling((queryDate - semester.StartDate).TotalDays / 7.0);
+                int weekDay = (int)queryDate.DayOfWeek;
+                weekDay = weekDay == 0 ? 7 : weekDay; // 将周日的0转换为7
+                bool isOddWeek = weekNumber % 2 == 1;
+
+                // 根据时间段设置节次范围
+                int startSection = 1, endSection = 11;
+                switch (timeSlot)
+                {
+                    case "上午（第1-4节）":
+                        startSection = 1;
+                        endSection = 4;
+                        break;
+                    case "下午（第5-8节）":
+                        startSection = 5;
+                        endSection = 8;
+                        break;
+                    case "晚上（第9-11节）":
+                        startSection = 9;
+                        endSection = 11;
+                        break;
+                }
+
+                string query = @"
+            WITH SplitSchedule AS (
+                SELECT 
+                    c.CourseID,
+                    c.CourseName,
+                    c.ClassroomID,
+                    value AS SingleSchedule
+                FROM Course c
+                CROSS APPLY STRING_SPLIT(c.ScheduleTime, ',')
+                WHERE c.SemesterID = @SemesterID
+            ),
+            ParsedSchedule AS (
+                SELECT 
+                    CourseID,
+                    CourseName,
+                    ClassroomID,
+                    SingleSchedule,
+                    CAST(LEFT(SingleSchedule, 1) AS INT) as WeekDay,
+                    CAST(SUBSTRING(SingleSchedule, 
+                        CHARINDEX('-', SingleSchedule) + 1,
+                        CHARINDEX('-', SingleSchedule, CHARINDEX('-', SingleSchedule) + 1) - 
+                        CHARINDEX('-', SingleSchedule) - 1) AS INT) as StartSection,
+                    CAST(SUBSTRING(SingleSchedule,
+                        CHARINDEX('-', SingleSchedule, CHARINDEX('-', SingleSchedule) + 1) + 1,
+                        CHARINDEX('-', SingleSchedule, CHARINDEX('-', SingleSchedule, 
+                            CHARINDEX('-', SingleSchedule) + 1) + 1) - 
+                        CHARINDEX('-', SingleSchedule, CHARINDEX('-', SingleSchedule) + 1) - 1) AS INT) as EndSection,
+                    CAST(SUBSTRING(SingleSchedule,
+                        CHARINDEX('-', SingleSchedule, CHARINDEX('-', SingleSchedule, 
+                            CHARINDEX('-', SingleSchedule) + 1) + 1) + 1,
+                        CHARINDEX('-', SingleSchedule, CHARINDEX('-', SingleSchedule, 
+                            CHARINDEX('-', SingleSchedule, CHARINDEX('-', SingleSchedule) + 1) + 1) + 1) - 
+                        CHARINDEX('-', SingleSchedule, CHARINDEX('-', SingleSchedule, 
+                            CHARINDEX('-', SingleSchedule) + 1) + 1) - 1) AS INT) as StartWeek,
+                    CAST(SUBSTRING(SingleSchedule,
+                        CHARINDEX('-', SingleSchedule, CHARINDEX('-', SingleSchedule, 
+                            CHARINDEX('-', SingleSchedule, CHARINDEX('-', SingleSchedule) + 1) + 1) + 1) + 1,
                         CASE 
-                            WHEN c.CourseID IS NULL THEN '空闲'
-                            ELSE '占用'
-                        END AS CurrentStatus,
-                        COALESCE(c.CourseName, '') as CurrentCourse,
-                        COALESCE(c.ScheduleTime, '') as ScheduleTime
-                    FROM Classroom cr
-                    LEFT JOIN Course c ON cr.ClassroomID = c.ClassroomID
-                        AND c.SemesterID = (
-                            SELECT TOP 1 SemesterID 
-                            FROM Semester 
-                            WHERE @queryDate BETWEEN StartDate AND EndDate
-                        )
-                        {timeCondition}
-                    ORDER BY cr.Floor, cr.RoomNumber";
+                            WHEN CHARINDEX('A', SingleSchedule) > 0 OR CHARINDEX('B', SingleSchedule) > 0 
+                            THEN CHARINDEX('A', SingleSchedule + 'A') - 
+                                CHARINDEX('-', SingleSchedule, CHARINDEX('-', SingleSchedule, 
+                                    CHARINDEX('-', SingleSchedule, CHARINDEX('-', SingleSchedule) + 1) + 1) + 1) - 1
+                            ELSE LEN(SingleSchedule) - 
+                                CHARINDEX('-', SingleSchedule, CHARINDEX('-', SingleSchedule, 
+                                    CHARINDEX('-', SingleSchedule, CHARINDEX('-', SingleSchedule) + 1) + 1) + 1)
+                        END) AS INT) as EndWeek,
+                    RIGHT(SingleSchedule, 1) as WeekType
+                FROM SplitSchedule
+            ),
+            OccupiedClassrooms AS (
+                SELECT DISTINCT 
+                    ps.ClassroomID,
+                    ps.CourseName,
+                    STRING_AGG(CAST(CONCAT('第', ps.StartSection, '-', ps.EndSection, '节') AS NVARCHAR(MAX)), 
+                             CHAR(13) + CHAR(10)) as ScheduleTimes
+                FROM ParsedSchedule ps
+                WHERE 
+                    ps.WeekDay = @WeekDay
+                    AND @WeekNumber BETWEEN ps.StartWeek AND ps.EndWeek
+                    AND (
+                        @TimeSlot = '全天'
+                        OR (ps.StartSection <= @EndSection AND ps.EndSection >= @StartSection)
+                    )
+                    AND (
+                        ps.WeekType NOT IN ('A', 'B')
+                        OR (ps.WeekType = 'A' AND @IsOddWeek = 1)
+                        OR (ps.WeekType = 'B' AND @IsOddWeek = 0)
+                    )
+                GROUP BY ps.ClassroomID, ps.CourseName
+            )
+            SELECT 
+                cr.RoomNumber,
+                cr.Floor,
+                cr.Capacity,
+                cr.SpatialLocation,
+                CASE 
+                    WHEN oc.ClassroomID IS NULL THEN '空闲'
+                    ELSE '占用'
+                END AS CurrentStatus,
+                COALESCE(oc.CourseName, '') as CurrentCourse,
+                COALESCE(oc.ScheduleTimes, '') as UsedTimeSlots
+            FROM Classroom cr
+            LEFT JOIN OccupiedClassrooms oc ON cr.ClassroomID = oc.ClassroomID
+            ORDER BY cr.Floor, cr.RoomNumber";
 
-                var dt = ExecuteQuery(query, new SqlParameter("@queryDate", queryDate));
+                var parameters = new[]
+                {
+            new SqlParameter("@SemesterID", semester.SemesterID),
+            new SqlParameter("@WeekDay", weekDay),
+            new SqlParameter("@WeekNumber", weekNumber),
+            new SqlParameter("@IsOddWeek", isOddWeek),
+            new SqlParameter("@TimeSlot", timeSlot),
+            new SqlParameter("@StartSection", startSection),
+            new SqlParameter("@EndSection", endSection)
+        };
+
+                var dt = ExecuteQuery(query, parameters);
                 ClassroomDataGrid.ItemsSource = dt.DefaultView;
+
+                // 更新状态显示
+                UpdateStatusText(queryDate, weekNumber, weekDay, isOddWeek);
             }
             catch (Exception ex)
             {
@@ -547,15 +989,111 @@ namespace UniAcamanageWpfApp.Views
             }
         }
 
-        private string GetTimeCondition(string timeSlot)
+        // 辅助方法：获取时间段条件
+        private string GetTimeCondition(string tableAlias)
         {
-            return timeSlot switch
+            return $@"(
+        CASE @TimeSlot
+            WHEN '上午（第1-4节）' THEN ({tableAlias}.StartSection <= 4 AND {tableAlias}.EndSection >= 1)
+            WHEN '下午（第5-8节）' THEN ({tableAlias}.StartSection <= 8 AND {tableAlias}.EndSection >= 5)
+            WHEN '晚上（第9-11节）' THEN ({tableAlias}.StartSection <= 11 AND {tableAlias}.EndSection >= 9)
+            ELSE 1=1  -- 全天
+        END = 1)";
+        }
+
+        private SemesterInfo GetCurrentSemester(DateTime date)
+        {
+            string query = @"
+        WITH RankedSemesters AS (
+            SELECT 
+                s.SemesterID,
+                s.StartDate,
+                s.EndDate,
+                s.SemesterName,
+                ay.YearName,
+                CASE
+                    -- 当前日期在学期内，优先级最高
+                    WHEN @Date BETWEEN s.StartDate AND s.EndDate THEN 1
+                    -- 当前日期在学期开始之前，选择最近的未来学期
+                    WHEN @Date < s.StartDate THEN 2
+                    -- 当前日期在学期结束之后，优先级最低
+                    ELSE 3
+                END AS Priority,
+                -- 计算与当前日期的天数差
+                ABS(DATEDIFF(DAY, @Date, 
+                    CASE
+                        WHEN @Date < s.StartDate THEN s.StartDate
+                        WHEN @Date > s.EndDate THEN s.EndDate
+                        ELSE @Date
+                    END
+                )) AS DaysDifference
+            FROM Semester s
+            INNER JOIN AcademicYear ay ON s.AcademicYearID = ay.AcademicYearID
+        )
+        SELECT TOP 1 
+            SemesterID,
+            StartDate,
+            EndDate,
+            SemesterName,
+            YearName
+        FROM RankedSemesters
+        ORDER BY 
+            Priority ASC,           -- 优先选择当前学期
+            DaysDifference ASC,     -- 其次选择最近的学期
+            StartDate ASC           -- 如果距离相同，选择较早开始的学期
+    ";
+
+            try
             {
-                "上午（第1-4节）" => "AND c.ScheduleTime LIKE '%1-%' OR c.ScheduleTime LIKE '%2-%' OR c.ScheduleTime LIKE '%3-%' OR c.ScheduleTime LIKE '%4-%'",
-                "下午（第5-8节）" => "AND c.ScheduleTime LIKE '%5-%' OR c.ScheduleTime LIKE '%6-%' OR c.ScheduleTime LIKE '%7-%' OR c.ScheduleTime LIKE '%8-%'",
-                "晚上（第9-11节）" => "AND c.ScheduleTime LIKE '%9-%' OR c.ScheduleTime LIKE '%10-%' OR c.ScheduleTime LIKE '%11-%'",
-                _ => "" // 全天
+                var dt = ExecuteQuery(query, new SqlParameter("@Date", date));
+                if (dt.Rows.Count == 0) return null;
+
+                return new SemesterInfo
+                {
+                    SemesterID = Convert.ToInt32(dt.Rows[0]["SemesterID"]),
+                    StartDate = Convert.ToDateTime(dt.Rows[0]["StartDate"]),
+                    EndDate = Convert.ToDateTime(dt.Rows[0]["EndDate"]),
+                    SemesterName = dt.Rows[0]["SemesterName"].ToString(),
+                    YearName = dt.Rows[0]["YearName"].ToString()
+                };
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"获取当前学期失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                return null;
+            }
+        }
+
+        // 更新 SemesterInfo 类
+        public class SemesterInfo
+        {
+            public int SemesterID { get; set; }
+            public DateTime StartDate { get; set; }
+            public DateTime EndDate { get; set; }
+            public string SemesterName { get; set; }
+            public string YearName { get; set; }
+
+            public override string ToString()
+            {
+                return $"{YearName} {SemesterName}";
+            }
+        }
+
+        private void UpdateStatusText(DateTime queryDate, int weekNumber, int weekDay, bool isOddWeek)
+        {
+            string weekDayText = weekDay switch
+            {
+                1 => "周一",
+                2 => "周二",
+                3 => "周三",
+                4 => "周四",
+                5 => "周五",
+                6 => "周六",
+                7 => "周日",
+                _ => "未知"
             };
+
+            StatusTextBlock.Text = $"查询日期：{queryDate:yyyy-MM-dd} ({weekDayText})，第{weekNumber}周（{(isOddWeek ? "单" : "双")}周）";
         }
         #endregion
 
@@ -572,49 +1110,46 @@ namespace UniAcamanageWpfApp.Views
             {
                 ShowLoading();
                 int semesterID = (int)ExamSemesterComboBox.SelectedValue;
-                string studentID = GlobalUserState.LinkedID; // 获取当前登录学生ID
+                string studentID = GlobalUserState.LinkedID;
                 string courseCode = ExamCodeTextBox.Text.Trim();
 
                 string query = @"
-                    SELECT 
-                        c.CourseCode,
-                        c.CourseName,
-                        e.ExamDate,
-                        e.ExamLocation,
-                        e.Duration as '考试时长(分钟)',
-                        e.ExamType,
-                        t.Name as Invigilator,
-                        e.BatchNumber as '考试批次',
-                        CASE 
-                            WHEN e.ExamDate > GETDATE() THEN '未开始'
-                            WHEN e.ExamDate <= GETDATE() AND DATEADD(MINUTE, e.Duration, e.ExamDate) > GETDATE() THEN '进行中'
-                            ELSE '已结束'
-                        END as ExamStatus
-                    FROM Exam e
-                    INNER JOIN Course c ON e.CourseID = c.CourseID
-                    INNER JOIN StudentCourse sc ON c.CourseID = sc.CourseID
-                    LEFT JOIN Teacher t ON e.InvigilatorID = t.TeacherID
-                    WHERE sc.StudentID = @studentID
-                    AND c.SemesterID = @semesterID";
+            DECLARE @CurrentTime DATETIME = GETDATE();
+            
+            SELECT 
+                c.CourseCode,
+                c.CourseName,
+                FORMAT(e.ExamDate, 'yyyy-MM-dd HH:mm') as ExamDateTime,
+                e.ExamLocation,
+                CAST(e.Duration as NVARCHAR) + ' 分钟' as ExamDuration,
+                e.ExamType,
+                t.Name as Invigilator,
+                CAST(e.BatchNumber as NVARCHAR) as BatchNumber,
+                CASE 
+                    WHEN e.ExamDate > @CurrentTime THEN '未开始'
+                    WHEN e.ExamDate <= @CurrentTime AND 
+                         DATEADD(MINUTE, e.Duration, e.ExamDate) > @CurrentTime THEN '进行中'
+                    ELSE '已结束'
+                END as ExamStatus,
+                e.ExamDate as OriginalExamDate
+            FROM Exam e
+            INNER JOIN Course c ON e.CourseID = c.CourseID
+            INNER JOIN StudentCourse sc ON c.CourseID = sc.CourseID AND sc.StudentID = @studentID
+            LEFT JOIN Teacher t ON e.InvigilatorID = t.TeacherID
+            WHERE c.SemesterID = @semesterID";
 
                 if (!string.IsNullOrEmpty(courseCode))
                 {
                     query += " AND c.CourseCode LIKE @courseCode";
                 }
 
-                query += @" ORDER BY 
-                            CASE 
-                                WHEN e.ExamDate > GETDATE() THEN 1
-                                WHEN e.ExamDate <= GETDATE() AND DATEADD(MINUTE, e.Duration, e.ExamDate) > GETDATE() THEN 2
-                                ELSE 3
-                            END,
-                            e.ExamDate";
+                query += @" ORDER BY e.ExamDate";
 
                 var parameters = new List<SqlParameter>
-                {
-                    new SqlParameter("@studentID", studentID),
-                    new SqlParameter("@semesterID", semesterID)
-                };
+        {
+            new SqlParameter("@studentID", studentID),
+            new SqlParameter("@semesterID", semesterID)
+        };
 
                 if (!string.IsNullOrEmpty(courseCode))
                 {
@@ -624,26 +1159,32 @@ namespace UniAcamanageWpfApp.Views
                 var dt = ExecuteQuery(query, parameters.ToArray());
                 ExamDataGrid.ItemsSource = dt.DefaultView;
 
-                // 检查是否有即将到来的考试（24小时内）
-                var upcomingExams = dt.AsEnumerable()
-                    .Where(row =>
-                    {
-                        var examDate = row.Field<DateTime>("ExamDate");
-                        var timeUntilExam = examDate - DateTime.Now;
-                        return timeUntilExam > TimeSpan.Zero && timeUntilExam <= TimeSpan.FromHours(24);
-                    })
-                    .ToList();
-
-                if (upcomingExams.Any())
+                // 只在第一次加载时显示考试提醒（不是在查询时）
+                if (sender != ExamCodeTextBox && sender != null)  // 确保不是通过查询按钮触发的
                 {
-                    var message = "您有以下即将到来的考试：\n\n";
-                    foreach (var exam in upcomingExams)
+                    var currentTime = DateTime.Now;
+                    var upcomingExams = dt.AsEnumerable()
+                        .Where(row =>
+                        {
+                            var examDate = row.Field<DateTime>("OriginalExamDate");
+                            var timeUntilExam = examDate - currentTime;
+                            return timeUntilExam > TimeSpan.Zero &&
+                                   timeUntilExam <= TimeSpan.FromHours(24) &&
+                                   row["ExamStatus"].ToString() != "已结束";
+                        })
+                        .ToList();
+
+                    if (upcomingExams.Any())
                     {
-                        message += $"课程：{exam["CourseName"]}\n" +
-                                 $"时间：{((DateTime)exam["ExamDate"]).ToString("yyyy-MM-dd HH:mm")}\n" +
-                                 $"地点：{exam["ExamLocation"]}\n\n";
+                        var message = "您有以下即将到来的考试：\n\n";
+                        foreach (var exam in upcomingExams)
+                        {
+                            message += $"课程：{exam["CourseName"]}\n" +
+                                      $"时间：{exam["ExamDateTime"]}\n" +
+                                      $"地点：{exam["ExamLocation"]}\n\n";
+                        }
+                        MessageBox.Show(message, "考试提醒", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
-                    MessageBox.Show(message, "考试提醒", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)

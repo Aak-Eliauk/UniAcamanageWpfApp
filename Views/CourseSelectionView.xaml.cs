@@ -57,6 +57,68 @@ namespace UniAcamanageWpfApp.Views
             await LoadAvailableCoursesAsync();
         }
 
+        private async void PreviewSchedule_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var selectedSemester = SelectionSemesterComboBox.SelectedItem as Semester;
+                if (selectedSemester == null)
+                {
+                    MessageBox.Show("请选择学期！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var selectedCourses = await GetAllSelectedCoursesForSchedule();
+                if (selectedCourses.Count == 0)
+                {
+                    MessageBox.Show("暂无已选课程，无法预览课表！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                // 获取当前是第几周
+                var semesterStartDate = selectedSemester.StartDate;
+                var currentWeek = CalculateCurrentWeek(semesterStartDate);
+
+                var previewWindow = new CourseSchedulePreviewWindow(selectedCourses, currentWeek);
+                previewWindow.Owner = Window.GetWindow(this);
+                previewWindow.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"预览课表失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // 计算当前教学周
+        private int CalculateCurrentWeek(DateTime semesterStartDate)
+        {
+            var today = DateTime.Today;
+            if (today < semesterStartDate)
+                return 1;
+
+            int weekNumber = (int)Math.Ceiling((today - semesterStartDate).TotalDays / 7.0);
+            return Math.Min(weekNumber, 25); // 最大25周
+        }
+
+        private async Task<List<Course>> GetAllSelectedCoursesForSchedule()
+        {
+            var selectedSemester = SelectionSemesterComboBox.SelectedItem as Semester;
+            if (selectedSemester == null)
+                return new List<Course>();
+
+            try
+            {
+                return await _courseService.GetSelectedCoursesAsync(
+                    GlobalUserState.LinkedID,
+                    selectedSemester.SemesterId);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"获取已选课程失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                return new List<Course>();
+            }
+        }
+
         private List<string> GetSelectedCourseCodes()
         {
             var selectedCourses = new List<string>();
@@ -512,28 +574,6 @@ namespace UniAcamanageWpfApp.Views
             }
         }
 
-        private async void PreviewSchedule_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var selectedCourses = await GetAllSelectedCoursesForSchedule();
-                if (selectedCourses.Count == 0)
-                {
-                    MessageBox.Show("暂无已选课程，无法预览课表！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
-                }
-
-                var scheduleItems = ConvertToScheduleItems(selectedCourses);
-                var previewWindow = new CourseSchedulePreviewWindow(scheduleItems);
-                previewWindow.Owner = Window.GetWindow(this);
-                previewWindow.ShowDialog();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"预览课表失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
         private async void SubmitSelection_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -643,35 +683,6 @@ namespace UniAcamanageWpfApp.Views
             return currentCredits + newCourse.Credit <= maxCredits;
         }
 
-        private async Task<List<Course>> GetAllSelectedCoursesForSchedule()
-        {
-            var selectedSemester = SelectionSemesterComboBox.SelectedItem as Semester;
-            if (selectedSemester == null) return new List<Course>();
-
-            return await _courseService.GetSelectedCoursesAsync(studentID, selectedSemester.SemesterId);
-        }
-
-        private List<CourseScheduleItem> ConvertToScheduleItems(List<Course> courses)
-        {
-            var scheduleItems = new List<CourseScheduleItem>();
-            foreach (var course in courses)
-            {
-                var timeSlots = ParseScheduleTime(course.ScheduleTime);
-                foreach (var slot in timeSlots)
-                {
-                    scheduleItems.Add(new CourseScheduleItem
-                    {
-                        CourseCode = course.CourseCode,
-                        CourseName = course.CourseName,
-                        Classroom = course.Classroom,
-                        DayOfWeek = slot.DayOfWeek,
-                        StartPeriod = slot.StartPeriod,
-                        Duration = slot.EndPeriod - slot.StartPeriod + 1
-                    });
-                }
-            }
-            return scheduleItems;
-        }
 
         #endregion
 

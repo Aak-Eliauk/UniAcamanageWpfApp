@@ -14,6 +14,7 @@
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -23,6 +24,33 @@
                  FontSize="24" 
                  FontWeight="Bold"
                  Margin="0,0,0,20"/>
+
+        <!-- 新增：工具栏区域 -->
+        <DockPanel Grid.Row="1" LastChildFill="False" Margin="0,0,0,10">
+            <!-- 左侧信息 -->
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                <TextBlock x:Name="CurrentWeekText"
+                         Text="当前周次："
+                         VerticalAlignment="Center"
+                         Margin="0,0,10,0"/>
+                <ComboBox x:Name="WeekSelector"
+                        Width="120"
+                        materialDesign:HintAssist.Hint="选择周次"
+                        Style="{StaticResource MaterialDesignOutlinedComboBox}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+
+            <!-- 右侧信息 -->
+            <TextBlock x:Name="SemesterInfo"
+                     DockPanel.Dock="Right"
+                     Text="2023-2024学年第一学期"
+                     VerticalAlignment="Center"/>
+        </DockPanel>
 
         <!-- 课表网格 -->
         <Grid x:Name="ScheduleGrid" 
@@ -124,6 +152,7 @@
 
         <!-- 底部按钮 -->
         <Button Grid.Row="2" 
+                x:Name="CloseButton" 
                 Content="关闭" 
                 Style="{StaticResource MaterialDesignOutlinedButton}"
                 HorizontalAlignment="Right"

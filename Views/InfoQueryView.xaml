@@ -378,18 +378,37 @@
                                                UniformCornerRadius="8"
                                                Margin="0,10">
                                 <DataGrid x:Name="ScheduleDataGrid" 
-                                        Style="{StaticResource CommonDataGridStyle}"
-                                        Height="400"
-                                        Margin="0">
+          AutoGenerateColumns="False"
+          IsReadOnly="True"
+          CanUserAddRows="False"
+          CanUserDeleteRows="False"
+          VerticalScrollBarVisibility="Auto"
+          HorizontalScrollBarVisibility="Auto">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="课程代码" Binding="{Binding CourseCode}" Width="100"/>
                                         <DataGridTextColumn Header="课程名称" Binding="{Binding CourseName}" Width="200"/>
                                         <DataGridTextColumn Header="课程类型" Binding="{Binding CourseType}" Width="100"/>
                                         <DataGridTextColumn Header="学分" Binding="{Binding Credit}" Width="60"/>
-                                        <DataGridTextColumn Header="上课时间" Binding="{Binding ScheduleTime}" Width="150"/>
-                                        <DataGridTextColumn Header="教室" Binding="{Binding Classroom}" Width="100"/>
-                                        <DataGridTextColumn Header="任课教师" Binding="{Binding TeacherName}" Width="100"/>
+                                        <DataGridTextColumn Header="上课时间" Binding="{Binding ClassTime}" Width="200">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                                    <Setter Property="Margin" Value="5,2"/>
+                                                    <Setter Property="LineHeight" Value="20"/>
+                                                    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="教室" Binding="{Binding Classroom}" Width="80"/>
+                                        <DataGridTextColumn Header="教师" Binding="{Binding TeacherName}" Width="100"/>
                                     </DataGrid.Columns>
+                                    <DataGrid.RowStyle>
+                                        <Style TargetType="DataGridRow">
+                                            <Setter Property="Height" Value="Auto"/>
+                                            <Setter Property="MinHeight" Value="30"/>
+                                        </Style>
+                                    </DataGrid.RowStyle>
                                 </DataGrid>
                             </materialDesign:Card>
                         </StackPanel>
@@ -426,7 +445,7 @@
                                      Margin="0,0,0,30"/>
 
                             <!-- 搜索区域 -->
-                            <Grid Width="400" HorizontalAlignment="Center">
+                            <Grid Width="400" HorizontalAlignment="Center" Height="196">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
@@ -436,67 +455,91 @@
 
                                 <!-- 搜索提示 -->
                                 <TextBlock Grid.Row="0"
-                                         Text="输入课程代码或课程名称："
-                                         FontSize="16"
-                                         FontWeight="SemiBold"
-                                         Margin="0,0,0,10"
-                                         Foreground="#666666"/>
+               Text="输入课程代码或课程名称："
+               FontSize="16"
+               FontWeight="SemiBold"
+               Margin="0,0,0,10"
+               Foreground="#666666"/>
 
-                                <!-- 搜索输入框 -->
-                                <TextBox Grid.Row="1"
-                                        x:Name="CourseSearchTextBox"
-                                        Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                        materialDesign:HintAssist.Hint="请输入课程代码或名称"
-                                        Height="45"
-                                        TextChanged="CourseSearchTextBox_TextChanged"/>
+                                <!-- 搜索相关控件的容器 -->
+                                <Grid Grid.Row="1">
+                                    <!-- 搜索输入框 -->
+                                    <TextBox x:Name="CourseSearchTextBox"
+                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                 materialDesign:HintAssist.Hint="请输入课程代码或名称"
+                 Height="45"
+                 TextChanged="CourseSearchTextBox_TextChanged"/>
+
+                                    
+                                </Grid>
 
                                 <!-- 搜索结果列表 -->
-                                <ListBox Grid.Row="2"
-         x:Name="CourseSearchResultListBox"
-         MaxHeight="200"
-         Margin="0,5"
-         Visibility="Collapsed"
-         Background="White"
-         BorderThickness="1"
-         BorderBrush="#E0E0E0"
-         materialDesign:ElevationAssist.Elevation="Dp4"
-         Panel.ZIndex="1"
-         SelectionChanged="CourseSearchResultListBox_SelectionChanged">
+                                <ListBox Grid.Row="2" x:Name="CourseSearchResultListBox" 
+Margin="0,0,0,0"
+Visibility="Collapsed"
+MaxHeight="55"
+BorderThickness="1"
+BorderBrush="#FFABADB3"
+Background="White"
+Panel.ZIndex="1"
+SelectionChanged="CourseSearchResultListBox_SelectionChanged">
                                     <ListBox.ItemContainerStyle>
                                         <Style TargetType="ListBoxItem">
-                                            <Setter Property="Padding" Value="12,8"/>
-                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                            <Setter Property="Padding" Value="8,6"/>
+                                            <Setter Property="Margin" Value="0"/>
                                         </Style>
                                     </ListBox.ItemContainerStyle>
                                 </ListBox>
 
                                 <!-- 查询按钮 -->
                                 <Button Grid.Row="3"
-                                       Content="查询课程"
-                                       Style="{StaticResource AnimatedButtonStyle}"
-                                       Width="200"
-                                       Margin="0,20"
-                                       Click="QueryCourseSchedule"/>
+            Content="查询课程"
+            Style="{StaticResource AnimatedButtonStyle}"
+            Width="200"
+            Margin="100,15,100,10"
+            Click="QueryCourseSchedule"/>
                             </Grid>
-
+                            
                             <!-- 课程信息显示 -->
                             <materialDesign:Card Background="White"
                                                materialDesign:ElevationAssist.Elevation="Dp1"
                                                UniformCornerRadius="8"
                                                Margin="0,10">
                                 <DataGrid x:Name="CourseScheduleDataGrid" 
-                                        Style="{StaticResource CommonDataGridStyle}"
-                                        Height="400"
-                                        Margin="0">
+       AutoGenerateColumns="False"
+IsReadOnly="True"
+CanUserAddRows="False"
+CanUserDeleteRows="False"
+VerticalScrollBarVisibility="Auto"
+HorizontalScrollBarVisibility="Auto">
+
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="课程代码" Binding="{Binding CourseCode}" Width="100"/>
-                                        <DataGridTextColumn Header="课程名称" Binding="{Binding CourseName}" Width="200"/>
-                                        <DataGridTextColumn Header="课程类型" Binding="{Binding CourseType}" Width="100"/>
-                                        <DataGridTextColumn Header="上课时间" Binding="{Binding ScheduleTime}" Width="150"/>
-                                        <DataGridTextColumn Header="教室" Binding="{Binding Classroom}" Width="100"/>
-                                        <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="80"/>
-                                        <DataGridTextColumn Header="课程描述" Binding="{Binding Description}" Width="*"/>
+                                        <DataGridTextColumn Header="课程名称" Binding="{Binding CourseName}" Width="120"/>
+                                        <DataGridTextColumn Header="课程类型" Binding="{Binding CourseType}" Width="90"/>
+                                        <DataGridTextColumn Header="学分" Binding="{Binding Credit}" Width="60"/>
+                                        <DataGridTextColumn Header="上课时间" Binding="{Binding ClassTime}" Width="200">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="{x:Type TextBlock}">
+                                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                                    <Setter Property="TextAlignment" Value="Left"/>
+                                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                                    <Setter Property="Margin" Value="2"/>
+                                                    <Setter Property="Padding" Value="2"/>
+                                                    <Setter Property="LineHeight" Value="20"/>
+                                                    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="教室" Binding="{Binding Classroom}" Width="80"/>
+                                        <DataGridTextColumn Header="教师" Binding="{Binding TeacherName}" Width="80"/>
                                     </DataGrid.Columns>
+                                    <DataGrid.RowStyle>
+                                        <Style TargetType="DataGridRow">
+                                            <Setter Property="Height" Value="Auto"/>
+                                            <Setter Property="MinHeight" Value="30"/>
+                                        </Style>
+                                    </DataGrid.RowStyle>
                                 </DataGrid>
                             </materialDesign:Card>
                         </StackPanel>
@@ -581,18 +624,36 @@
                                                UniformCornerRadius="8"
                                                Margin="0,10">
                                 <DataGrid x:Name="TeacherScheduleDataGrid" 
-                                        Style="{StaticResource CommonDataGridStyle}"
-                                        Height="400"
-                                        Margin="0">
+          Height="400"
+          Margin="0"
+          AutoGenerateColumns="False"
+          CanUserAddRows="False"
+          CanUserDeleteRows="False"
+          IsReadOnly="True"
+          VerticalScrollBarVisibility="Auto"
+          HorizontalScrollBarVisibility="Auto"
+          EnableRowVirtualization="False">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="教师工号" Binding="{Binding TeacherID}" Width="100"/>
-                                        <DataGridTextColumn Header="教师姓名" Binding="{Binding TeacherName}" Width="100"/>
-                                        <DataGridTextColumn Header="课程代码" Binding="{Binding CourseCode}" Width="100"/>
-                                        <DataGridTextColumn Header="课程名称" Binding="{Binding CourseName}" Width="200"/>
-                                        <DataGridTextColumn Header="上课时间" Binding="{Binding ScheduleTime}" Width="150"/>
-                                        <DataGridTextColumn Header="教室" Binding="{Binding Classroom}" Width="100"/>
+                                        <DataGridTextColumn Header="工号" Binding="{Binding TeacherID}" Width="80"/>
+                                        <DataGridTextColumn Header="姓名" Binding="{Binding TeacherName}" Width="80"/>
+                                        <DataGridTextColumn Header="所属院系" Binding="{Binding DepartmentName}" Width="100"/>
+                                        <DataGridTextColumn Header="课程代码" Binding="{Binding CourseCode}" Width="80"/>
+                                        <DataGridTextColumn Header="课程名称" Binding="{Binding CourseName}" Width="100"/>
+                                        <DataGridTextColumn Header="上课时间" Binding="{Binding ClassTime}" Width="200">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="{x:Type TextBlock}">
+                                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                                    <Setter Property="TextAlignment" Value="Left"/>
+                                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                                    <Setter Property="Margin" Value="2"/>
+                                                    <Setter Property="Padding" Value="2"/>
+                                                    <Setter Property="LineHeight" Value="20"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="教室" Binding="{Binding Classroom}" Width="80"/>
                                         <DataGridTextColumn Header="选课人数" Binding="{Binding StudentCount}" Width="80"/>
-                                        <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="80"/>
+                                        <DataGridTextColumn Header="学期" Binding="{Binding Semester}" Width="300"/>
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </materialDesign:Card>
@@ -695,6 +756,14 @@
            Click="QueryClassroom"/>
                             </Grid>
 
+                            <!-- 添加状态显示文本块 -->
+                            <TextBlock x:Name="StatusTextBlock"
+           Margin="0,20,0,10"
+           FontSize="14"
+           Foreground="#757575"
+           TextAlignment="Center"
+           HorizontalAlignment="Center"/>
+
                             <!-- 教室信息显示 -->
                             <materialDesign:Card Background="White"
                                                materialDesign:ElevationAssist.Elevation="Dp1"
@@ -703,32 +772,55 @@
                                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                                               HorizontalScrollBarVisibility="Auto" Margin="0,0,10,0" Height="343">
                                     <DataGrid x:Name="ClassroomDataGrid" 
-                                        Style="{StaticResource CommonDataGridStyle}"
-                                        MinHeight="400"
-                                        MaxHeight="600"
-                                        Margin="0" Width="970" Height="299">
+          AutoGenerateColumns="False"
+          IsReadOnly="True"
+          CanUserAddRows="False"
+          CanUserDeleteRows="False"
+          VerticalScrollBarVisibility="Auto"
+          HorizontalScrollBarVisibility="Auto">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="教室编号" Binding="{Binding RoomNumber}" Width="100"/>
-                                            <DataGridTextColumn Header="楼层" Binding="{Binding Floor}" Width="80"/>
-                                            <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="80"/>
-                                            <DataGridTextColumn Header="位置" Binding="{Binding SpatialLocation}" Width="150"/>
-                                            <DataGridTextColumn Header="当前状态" Binding="{Binding CurrentStatus}" Width="100">
-                                                <DataGridTextColumn.CellStyle>
-                                                    <Style TargetType="DataGridCell">
+                                            <DataGridTextColumn Header="楼层" Binding="{Binding Floor}" Width="60"/>
+                                            <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="60"/>
+                                            <DataGridTextColumn Header="位置" Binding="{Binding SpatialLocation}" Width="120"/>
+                                            <DataGridTextColumn Header="状态" Binding="{Binding CurrentStatus}" Width="60">
+                                                <DataGridTextColumn.ElementStyle>
+                                                    <Style TargetType="TextBlock">
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding CurrentStatus}" Value="空闲">
-                                                                <Setter Property="Foreground" Value="#4CAF50"/>
+                                                                <Setter Property="Foreground" Value="#FF28A745"/>
+                                                                <!-- 绿色 -->
+                                                                <Setter Property="FontWeight" Value="Bold"/>
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding CurrentStatus}" Value="占用">
-                                                                <Setter Property="Foreground" Value="#F44336"/>
+                                                                <Setter Property="Foreground" Value="#FFDC3545"/>
+                                                                <!-- 红色 -->
+                                                                <Setter Property="FontWeight" Value="Bold"/>
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
-                                                </DataGridTextColumn.CellStyle>
+                                                </DataGridTextColumn.ElementStyle>
                                             </DataGridTextColumn>
-                                            <DataGridTextColumn Header="当前课程" Binding="{Binding CurrentCourse}" Width="200"/>
-                                            <DataGridTextColumn Header="上课时间" Binding="{Binding ScheduleTime}" Width="150"/>
+                                            <DataGridTextColumn Header="当前课程" Binding="{Binding CurrentCourse}" Width="120"/>
+                                            <DataGridTextColumn Header="上课时间" Binding="{Binding UsedTimeSlots}" Width="200">
+                                                <DataGridTextColumn.ElementStyle>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="TextWrapping" Value="Wrap"/>
+                                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                                        <Setter Property="Margin" Value="5,2"/>
+                                                        <Setter Property="LineHeight" Value="20"/>
+                                                        <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+                                                    </Style>
+                                                </DataGridTextColumn.ElementStyle>
+                                            </DataGridTextColumn>
                                         </DataGrid.Columns>
+                                        <!-- 设置行样式以支持自动高度 -->
+                                        <DataGrid.RowStyle>
+                                            <Style TargetType="DataGridRow">
+                                                <Setter Property="Height" Value="Auto"/>
+                                                <Setter Property="MinHeight" Value="30"/>
+                                            </Style>
+                                        </DataGrid.RowStyle>
                                     </DataGrid>
                                 </ScrollViewer>
                             </materialDesign:Card>
@@ -823,33 +915,39 @@
                                                UniformCornerRadius="8"
                                                Margin="0,10">
                                 <DataGrid x:Name="ExamDataGrid" 
-                                        Style="{StaticResource CommonDataGridStyle}"
-                                        Height="400"
-                                        Margin="0">
+        Style="{StaticResource CommonDataGridStyle}"
+        Height="400"
+        Margin="0">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="课程代码" Binding="{Binding CourseCode}" Width="100"/>
                                         <DataGridTextColumn Header="课程名称" Binding="{Binding CourseName}" Width="200"/>
-                                        <DataGridTextColumn Header="考试时间" Binding="{Binding ExamDate}" Width="150"/>
+                                        <DataGridTextColumn Header="考试时间" Binding="{Binding ExamDateTime}" Width="150"/>
+                                        <!-- 改成 ExamDateTime，因为查询中使用了 FORMAT -->
                                         <DataGridTextColumn Header="考试地点" Binding="{Binding ExamLocation}" Width="100"/>
-                                        <DataGridTextColumn Header="考试时长" Binding="{Binding Duration}" Width="80"/>
+                                        <DataGridTextColumn Header="考试时长" Binding="{Binding ExamDuration}" Width="80"/>
+                                        <!-- 改成 ExamDuration，因为查询中格式化了时长显示 -->
                                         <DataGridTextColumn Header="考试类型" Binding="{Binding ExamType}" Width="100"/>
                                         <DataGridTextColumn Header="监考教师" Binding="{Binding Invigilator}" Width="100"/>
+                                        <DataGridTextColumn Header="考试批次" Binding="{Binding BatchNumber}" Width="80"/>
+                                        <!-- 添加考试批次列 -->
                                         <DataGridTextColumn Header="考试状态" Binding="{Binding ExamStatus}" Width="100">
-                                            <DataGridTextColumn.CellStyle>
-                                                <Style TargetType="DataGridCell">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding ExamStatus}" Value="未开始">
                                                             <Setter Property="Foreground" Value="#2196F3"/>
+                                                            <Setter Property="FontWeight" Value="Bold"/>
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding ExamStatus}" Value="进行中">
                                                             <Setter Property="Foreground" Value="#4CAF50"/>
+                                                            <Setter Property="FontWeight" Value="Bold"/>
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding ExamStatus}" Value="已结束">
                                                             <Setter Property="Foreground" Value="#9E9E9E"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
-                                            </DataGridTextColumn.CellStyle>
+                                            </DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
                                     </DataGrid.Columns>
                                 </DataGrid>
