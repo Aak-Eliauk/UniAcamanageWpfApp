@@ -533,6 +533,8 @@ HorizontalScrollBarVisibility="Auto">
                                         </DataGridTextColumn>
                                         <DataGridTextColumn Header="教室" Binding="{Binding Classroom}" Width="80"/>
                                         <DataGridTextColumn Header="教师" Binding="{Binding TeacherName}" Width="80"/>
+                                        <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="100"/>
+                                        <DataGridTextColumn Header="学期" Binding="{Binding Semester}" Width="300"/>
                                     </DataGrid.Columns>
                                     <DataGrid.RowStyle>
                                         <Style TargetType="DataGridRow">

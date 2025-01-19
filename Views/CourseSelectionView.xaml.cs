@@ -324,7 +324,7 @@ namespace UniAcamanageWpfApp.Views
 
         private async void RecommendSemester_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            await LoadRecommendedCoursesAsync();
+            await LoadCourseSelectionResultsAsync();
         }
 
         private async void SelfSelectSemester_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -554,19 +554,43 @@ namespace UniAcamanageWpfApp.Views
                 _viewModel.SelectedCourses = new ObservableCollection<Course>(selectedCourses);
 
                 // 设置 DataGrid 的数据源
-                SelectedCoursesGrid.ItemsSource = _viewModel.SelectedCourses;
+                CourseSelectionResultGrid.ItemsSource = _viewModel.SelectedCourses;
 
                 // 更新统计信息
-                UpdateTotalCredits();
-                _viewModel.UpdateRecommendedCoursesStatus();
-                _viewModel.SelectedCourses = new ObservableCollection<Course>(selectedCourses);
-                SelectedCoursesGrid.ItemsSource = _viewModel.SelectedCourses;
-                UpdateAllCoursesStatus(); // 更新所有课程状态
-                UpdateTotalCredits();
+                _viewModel.UpdateStatistics();
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"加载已选课程失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                LoadingIndicator.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private async Task LoadCourseSelectionResultsAsync()
+        {
+            try
+            {
+                var selectedSemester = SelectionSemesterComboBox.SelectedItem as Semester;
+                if (selectedSemester == null) return;
+
+                LoadingIndicator.Visibility = Visibility.Visible;
+                var selectedCourses = await _courseService.GetSelectedCoursesAsync(studentID, selectedSemester.SemesterId);
+
+                // 更新 ViewModel 的集合
+                _viewModel.CourseSelectionResults = new ObservableCollection<Course>(selectedCourses);
+
+                // 设置 DataGrid 的数据源
+                CourseSelectionResultGrid.ItemsSource = _viewModel.CourseSelectionResults;
+
+                // 更新统计信息
+                _viewModel.UpdateStatistics();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"加载选课结果失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -683,172 +707,6 @@ namespace UniAcamanageWpfApp.Views
             return currentCredits + newCourse.Credit <= maxCredits;
         }
 
-
-        #endregion
-
-        #region 数据导出功能
-
-        private async void ExportSelection_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var selectedSemester = SelectionSemesterComboBox.SelectedItem as Semester;
-                if (selectedSemester == null)
-                {
-                    MessageBox.Show("请选择要导出的学期！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                var saveFileDialog = new Microsoft.Win32.SaveFileDialog
-                {
-                    Filter = "Excel文件|*.xlsx|CSV文件|*.csv",
-                    DefaultExt = ".xlsx",
-                    FileName = $"选课结果_{selectedSemester.SemesterName}_{DateTime.Now:yyyyMMdd}"
-                };
-
-                if (saveFileDialog.ShowDialog() == true)
-                {
-                    LoadingIndicator.Visibility = Visibility.Visible;
-
-                    var selectedCourses = await _courseService.GetSelectedCoursesAsync(
-                        studentID, selectedSemester.SemesterId);
-
-                    if (Path.GetExtension(saveFileDialog.FileName).Equals(".xlsx", StringComparison.OrdinalIgnoreCase))
-                    {
-                        await ExportToExcel(selectedCourses, saveFileDialog.FileName);
-                    }
-                    else
-                    {
-                        await ExportToCsv(selectedCourses, saveFileDialog.FileName);
-                    }
-
-                    MessageBox.Show("导出成功！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"导出失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
-                LoadingIndicator.Visibility = Visibility.Collapsed;
-            }
-        }
-
-        private async Task ExportToExcel(List<Course> courses, string filePath)
-        {
-            using (var workbook = new XLWorkbook())
-            {
-                var worksheet = workbook.Worksheets.Add("选课结果");
-
-                // 添加表头
-                worksheet.Cell(1, 1).Value = "课程代码";
-                worksheet.Cell(1, 2).Value = "课程名称";
-                worksheet.Cell(1, 3).Value = "课程类型";
-                worksheet.Cell(1, 4).Value = "学分";
-                worksheet.Cell(1, 5).Value = "上课时间";
-                worksheet.Cell(1, 6).Value = "上课地点";
-                worksheet.Cell(1, 7).Value = "任课教师";
-
-                // 添加数据
-                for (int i = 0; i < courses.Count; i++)
-                {
-                    worksheet.Cell(i + 2, 1).Value = courses[i].CourseCode;
-                    worksheet.Cell(i + 2, 2).Value = courses[i].CourseName;
-                    worksheet.Cell(i + 2, 3).Value = courses[i].CourseType;
-                    worksheet.Cell(i + 2, 4).Value = courses[i].Credit;
-                    worksheet.Cell(i + 2, 5).Value = courses[i].ScheduleTime;
-                    worksheet.Cell(i + 2, 6).Value = courses[i].Classroom;
-                    worksheet.Cell(i + 2, 7).Value = courses[i].TeacherName;
-                }
-
-                // 设置样式
-                var range = worksheet.Range(1, 1, courses.Count + 1, 7);
-                range.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-                range.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
-                worksheet.Columns().AdjustToContents();
-
-                await Task.Run(() => workbook.SaveAs(filePath));
-            }
-        }
-
-        private async Task ExportToCsv(List<Course> courses, string filePath)
-        {
-            var lines = new List<string>
-        {
-            "课程代码,课程名称,课程类型,学分,上课时间,上课地点,任课教师"
-        };
-
-            foreach (var course in courses)
-            {
-                lines.Add($"{course.CourseCode},{course.CourseName},{course.CourseType}," +
-                         $"{course.Credit},{course.ScheduleTime},{course.Classroom},{course.TeacherName}");
-            }
-
-            await File.WriteAllLinesAsync(filePath, lines, Encoding.UTF8);
-        }
-
-        #endregion
-
-        #region 课程推荐优化
-
-        private async void OptimizeSelection_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var result = MessageBox.Show(
-                    "系统将基于您的专业要求和课程时间分布，推荐最优的课程组合。是否继续？",
-                    "课程优化",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (result == MessageBoxResult.Yes)
-                {
-                    LoadingIndicator.Visibility = Visibility.Visible;
-                    var selectedSemester = RecommendSemesterComboBox.SelectedItem as Semester;
-                    if (selectedSemester == null) return;
-
-                    var optimizedCourses = await _courseService.GetOptimizedCourseSelectionAsync(
-                        studentID, selectedSemester.SemesterId);
-
-                    // 更新课程选择状态
-                    UpdateCourseSelectionStatus(optimizedCourses);
-                    UpdateCourseStatistics();
-
-                    MessageBox.Show("课程优化完成！请检查推荐的课程组合。",
-                        "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"课程优化失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
-                LoadingIndicator.Visibility = Visibility.Collapsed;
-            }
-        }
-
-        private void UpdateCourseSelectionStatus(List<Course> optimizedCourses)
-        {
-            // 更新必修课选择状态
-            UpdateGridSelectionStatus(BasicRequiredGrid, optimizedCourses);
-            UpdateGridSelectionStatus(MajorRequiredGrid, optimizedCourses);
-            UpdateGridSelectionStatus(ElectiveGrid, optimizedCourses);
-        }
-
-        private void UpdateGridSelectionStatus(DataGrid grid, List<Course> optimizedCourses)
-        {
-            var courses = grid.ItemsSource as IEnumerable<Course>;
-            if (courses == null) return;
-
-            var optimizedIds = optimizedCourses.Select(c => c.CourseID).ToHashSet();
-            foreach (var course in courses)
-            {
-                course.IsSelected = optimizedIds.Contains(course.CourseID);
-            }
-            grid.Items.Refresh();
-        }
 
         #endregion
 

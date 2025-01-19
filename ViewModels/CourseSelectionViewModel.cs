@@ -10,8 +10,8 @@ namespace UniAcamanageWpfApp.ViewModels
     {
         public CourseSelectionViewModel()
         {
-            // 初始化属性
             SelectedCourses = new ObservableCollection<Course>();
+            CourseSelectionResults = new ObservableCollection<Course>();
             AvailableCourses = new ObservableCollection<Course>();
             RecommendedBasicCourses = new ObservableCollection<Course>();
             RecommendedMajorCourses = new ObservableCollection<Course>();
@@ -19,7 +19,6 @@ namespace UniAcamanageWpfApp.ViewModels
         }
 
         #region 属性
-
 
         private ObservableCollection<Course> _selectedCourses;
         public ObservableCollection<Course> SelectedCourses
@@ -29,6 +28,18 @@ namespace UniAcamanageWpfApp.ViewModels
             {
                 _selectedCourses = value;
                 OnPropertyChanged(nameof(SelectedCourses));
+                UpdateStatistics();
+            }
+        }
+
+        private ObservableCollection<Course> _courseSelectionResults;
+        public ObservableCollection<Course> CourseSelectionResults
+        {
+            get => _courseSelectionResults;
+            set
+            {
+                _courseSelectionResults = value;
+                OnPropertyChanged(nameof(CourseSelectionResults));
                 UpdateStatistics();
             }
         }
@@ -109,6 +120,20 @@ namespace UniAcamanageWpfApp.ViewModels
             }
         }
 
+        private double _approvalRate;
+        public double ApprovalRate
+        {
+            get => _approvalRate;
+            set
+            {
+                if (_approvalRate != value)
+                {
+                    _approvalRate = value;
+                    OnPropertyChanged(nameof(ApprovalRate));
+                }
+            }
+        }
+
         public int AvailableCourseCount => AvailableCourses?.Count ?? 0;
         public int BasicRequiredCount => RecommendedBasicCourses?.Count ?? 0;
         public int MajorRequiredCount => RecommendedMajorCourses?.Count ?? 0;
@@ -140,10 +165,22 @@ namespace UniAcamanageWpfApp.ViewModels
 
         #region 方法
 
-        private void UpdateStatistics()
+        public void UpdateStatistics()
         {
             SelectedCourseCount = SelectedCourses?.Count ?? 0;
             TotalCredits = SelectedCourses?.Sum(c => c.Credit) ?? 0;
+            ApprovalRate = CalculateApprovalRate();
+        }
+
+        private double CalculateApprovalRate()
+        {
+            if (SelectedCourses == null || SelectedCourses.Count == 0)
+            {
+                return 0;
+            }
+
+            int approvedCount = SelectedCourses.Count(c => c.ApprovalStatus == "已通过");
+            return (double)approvedCount / SelectedCourses.Count * 100;
         }
 
         public void UpdateRecommendedCoursesStatus()

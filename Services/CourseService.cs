@@ -45,13 +45,15 @@ namespace UniAcamanageWpfApp.Services
                 {
                     // 1. 获取课程所属学期
                     var getSemesterSql = "SELECT SemesterID FROM Course WHERE CourseID = @CourseID";
+                    int semesterId;
+
                     using (var command = new SqlCommand(getSemesterSql, connection, transaction))
                     {
                         command.Parameters.AddWithValue("@CourseID", courseId);
-                        var semesterId = (int)await command.ExecuteScalarAsync();
+                        semesterId = (int)await command.ExecuteScalarAsync();
 
                         // 2. 检查时间冲突
-                        if (await HasTimeConflict(connection, studentId, courseId, semesterId))
+                        if (await HasTimeConflict(connection, transaction, studentId, courseId, semesterId))
                         {
                             throw new InvalidOperationException("所选课程与已选课程时间冲突");
                         }
@@ -102,11 +104,10 @@ namespace UniAcamanageWpfApp.Services
             }
         }
 
-        private async Task<bool> HasTimeConflict(SqlConnection connection, string studentId, int courseId, int semesterId)
+        private async Task<bool> HasTimeConflict(SqlConnection connection, SqlTransaction transaction, string studentId, int courseId, int semesterId)
         {
             var sql = @"
     WITH ParsedNewCourse AS (
-        -- 解析要添加的课程的时间段
         SELECT 
             value AS TimeSlot,
             CAST(SUBSTRING(value, 1, CHARINDEX('-', value) - 1) AS INT) as WeekDay,
@@ -147,7 +148,6 @@ namespace UniAcamanageWpfApp.Services
         WHERE c.CourseID = @CourseID
     ),
     ParsedExistingCourses AS (
-        -- 解析学生已选课程的时间段
         SELECT 
             value AS TimeSlot,
             CAST(SUBSTRING(value, 1, CHARINDEX('-', value) - 1) AS INT) as WeekDay,
@@ -193,23 +193,19 @@ namespace UniAcamanageWpfApp.Services
     FROM ParsedNewCourse n
     CROSS JOIN ParsedExistingCourses e
     WHERE 
-        -- 检查星期是否相同
         n.WeekDay = e.WeekDay
-        -- 检查节次是否重叠
         AND n.StartSection <= e.EndSection 
         AND e.StartSection <= n.EndSection
-        -- 检查周次是否重叠
         AND n.StartWeek <= e.EndWeek
         AND e.StartWeek <= n.EndWeek
-        -- 检查单双周是否冲突
         AND (
-            (n.WeekType IS NULL AND e.WeekType IS NULL) -- 都是每周
-            OR (n.WeekType IS NULL AND e.WeekType IS NOT NULL) -- 新课每周，已选课单双周
-            OR (n.WeekType IS NOT NULL AND e.WeekType IS NULL) -- 新课单双周，已选课每周
-            OR (n.WeekType = e.WeekType) -- 相同的单双周
+            (n.WeekType IS NULL AND e.WeekType IS NULL)
+            OR (n.WeekType IS NULL AND e.WeekType IS NOT NULL)
+            OR (n.WeekType IS NOT NULL AND e.WeekType IS NULL)
+            OR (n.WeekType = e.WeekType)
         )";
 
-            using var command = new SqlCommand(sql, connection);
+            using var command = new SqlCommand(sql, connection, transaction);
             command.Parameters.AddWithValue("@StudentID", studentId);
             command.Parameters.AddWithValue("@CourseID", courseId);
             command.Parameters.AddWithValue("@SemesterID", semesterId);
@@ -261,7 +257,8 @@ namespace UniAcamanageWpfApp.Services
                 c.Capacity
             ) as Capacity,
             c.Description,
-            sc.SelectionType as Status
+            sc.SelectionType as ApprovalStatus,
+            sc.RejectReason
         FROM Course c
         INNER JOIN StudentCourse sc ON c.CourseID = sc.CourseID
         LEFT JOIN Classroom cr ON c.ClassroomID = cr.ClassroomID
@@ -292,7 +289,9 @@ namespace UniAcamanageWpfApp.Services
                                 TeacherName = reader.GetString(reader.GetOrdinal("TeacherName")),
                                 Capacity = reader.GetString(reader.GetOrdinal("Capacity")),
                                 Description = reader.IsDBNull(reader.GetOrdinal("Description")) ? null : reader.GetString(reader.GetOrdinal("Description")),
-                                Status = reader.GetString(reader.GetOrdinal("Status"))
+                                ApprovalStatus = reader.GetString(reader.GetOrdinal("ApprovalStatus")),
+                                RejectReason = reader.IsDBNull(reader.GetOrdinal("RejectReason")) ? null : reader.GetString(reader.GetOrdinal("RejectReason")),
+                                IsSelected = true // Mark the course as selected
                             });
                         }
                     }
@@ -494,8 +493,6 @@ namespace UniAcamanageWpfApp.Services
                ay.YearName as AcademicYearName
         FROM Semester s
         INNER JOIN AcademicYear ay ON s.AcademicYearID = ay.AcademicYearID
-        WHERE s.StartDate <= DATEADD(MONTH, 1, GETDATE())
-        AND s.EndDate >= DATEADD(MONTH, -1, GETDATE())
         ORDER BY s.StartDate DESC";
 
                 using (var command = new SqlCommand(sql, connection))
@@ -652,24 +649,6 @@ namespace UniAcamanageWpfApp.Services
                             string.Join(", ", overCapacityCourses.Select(c => c.CourseId)));
                     }
 
-                    // 3. 检查时间冲突
-                    foreach (var course in courseDetails)
-                    {
-                        // 检查与其他要选择的课程的时间冲突
-                        foreach (var otherCourse in courseDetails.Where(c => c.CourseId != course.CourseId))
-                        {
-                            if (await CheckTimeConflictBetweenCourses(course.ScheduleTime, otherCourse.ScheduleTime))
-                            {
-                                throw new InvalidOperationException($"课程ID {course.CourseId} 与课程ID {otherCourse.CourseId} 存在时间冲突");
-                            }
-                        }
-
-                        // 检查与已选课程的时间冲突（排除本次要选的课程）
-                        if (await HasTimeConflict(connection, GlobalUserState.LinkedID, course.CourseId, semesterId))
-                        {
-                            throw new InvalidOperationException($"课程ID {course.CourseId} 与已选课程存在时间冲突");
-                        }
-                    }
 
                     // 4. 删除当前学期的选课记录（排除已确认的选课）
                     var deleteSql = @"
