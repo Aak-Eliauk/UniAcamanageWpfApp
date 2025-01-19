@@ -1,14 +1,11 @@
-﻿using System.Configuration;
-using System.Data;
+﻿using System;
 using System.Windows;
+using UniAcamanageWpfApp.Services;
 
 namespace UniAcamanageWpfApp
 {
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
     public partial class App : Application
     {
+       
     }
-
 }
