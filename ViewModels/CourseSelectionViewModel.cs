@@ -19,7 +19,6 @@ namespace UniAcamanageWpfApp.ViewModels
         }
 
         #region 属性
-
         private ObservableCollection<Course> _selectedCourses;
         public ObservableCollection<Course> SelectedCourses
         {
@@ -29,6 +28,17 @@ namespace UniAcamanageWpfApp.ViewModels
                 _selectedCourses = value;
                 OnPropertyChanged(nameof(SelectedCourses));
                 UpdateStatistics();
+            }
+        }
+
+        private int _totalSelectedCourses;
+        public int TotalSelectedCourses
+        {
+            get => _totalSelectedCourses;
+            set
+            {
+                _totalSelectedCourses = value;
+                OnPropertyChanged(nameof(TotalSelectedCourses));
             }
         }
 
@@ -170,6 +180,7 @@ namespace UniAcamanageWpfApp.ViewModels
             SelectedCourseCount = SelectedCourses?.Count ?? 0;
             TotalCredits = SelectedCourses?.Sum(c => c.Credit) ?? 0;
             ApprovalRate = CalculateApprovalRate();
+            TotalSelectedCourses = SelectedCourses.Count;
         }
 
         private double CalculateApprovalRate()
