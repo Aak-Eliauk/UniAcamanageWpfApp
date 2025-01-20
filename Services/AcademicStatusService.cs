@@ -9,6 +9,7 @@ using System.Configuration;
 using UniAcamanageWpfApp.Models;
 using Dapper;
 using System.Diagnostics;
+using Microsoft.Extensions.Configuration;
 
 namespace UniAcamanageWpfApp.Services
 {
@@ -23,7 +24,8 @@ namespace UniAcamanageWpfApp.Services
 
         public AcademicStatusService()
         {
-            _connectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
+            // 直接从配置文件读取连接字符串
+            _connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
         }
 
         private class GradeResult
@@ -433,47 +435,78 @@ namespace UniAcamanageWpfApp.Services
 
         public async Task<ProgramProgressInfo> GetProgramProgressAsync(string studentId)
         {
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
-
-            var result = await connection.QueryFirstOrDefaultAsync<dynamic>(
-                "EXEC GetStudentProgramProgress @StudentID",
-                new { StudentID = studentId }
-            );
-
-            return new ProgramProgressInfo
+            try
             {
-                CompletedCredits = result.CompletedCredits,
-                TotalCredits = result.TotalCredits,
-                CompletionPercentage = result.CompletionPercentage,
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-                BaseRequiredProgress = new ProgressInfo
+                using var command = new SqlCommand("GetStudentProgramProgress", connection);
+                command.CommandType = CommandType.StoredProcedure;
+                command.Parameters.AddWithValue("@StudentID", studentId);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
                 {
-                    CompletedCredits = result.CompletedBaseRequired,
-                    TotalCredits = result.TotalBaseRequired,
-                    Percentage = CalculatePercentage(result.CompletedBaseRequired, result.TotalBaseRequired)
-                },
+                    try
+                    {
+                        var progress = new ProgramProgressInfo
+                        {
+                            CompletedCredits = reader.GetDecimal(reader.GetOrdinal("CompletedCredits")),
+                            TotalCredits = reader.GetDecimal(reader.GetOrdinal("TotalCredits")),
+                            CompletionPercentage = reader.GetDecimal(reader.GetOrdinal("CompletionPercentage")),
 
-                MajorRequiredProgress = new ProgressInfo
-                {
-                    CompletedCredits = result.CompletedMajorRequired,
-                    TotalCredits = result.TotalMajorRequired,
-                    Percentage = CalculatePercentage(result.CompletedMajorRequired, result.TotalMajorRequired)
-                },
+                            BaseRequiredProgress = new ProgressInfo
+                            {
+                                CompletedCredits = reader.GetDecimal(reader.GetOrdinal("CompletedBaseRequired")),
+                                TotalCredits = reader.GetDecimal(reader.GetOrdinal("TotalBaseRequired")),
+                                Percentage = CalculatePercentage(
+                                    reader.GetDecimal(reader.GetOrdinal("CompletedBaseRequired")),
+                                    reader.GetDecimal(reader.GetOrdinal("TotalBaseRequired")))
+                            },
 
-                ElectiveProgress = new ProgressInfo
-                {
-                    CompletedCredits = result.CompletedElective,
-                    TotalCredits = result.TotalElective,
-                    Percentage = CalculatePercentage(result.CompletedElective, result.TotalElective)
-                },
+                            MajorRequiredProgress = new ProgressInfo
+                            {
+                                CompletedCredits = reader.GetDecimal(reader.GetOrdinal("CompletedMajorRequired")),
+                                TotalCredits = reader.GetDecimal(reader.GetOrdinal("TotalMajorRequired")),
+                                Percentage = CalculatePercentage(
+                                    reader.GetDecimal(reader.GetOrdinal("CompletedMajorRequired")),
+                                    reader.GetDecimal(reader.GetOrdinal("TotalMajorRequired")))
+                            },
 
-                CompletedCourses = result.CompletedCourses,
-                OngoingCourses = result.OngoingCourses,
-                FailedCourses = result.FailedCourses,
-                RemainingCourses = result.RemainingCourses
-            };
+                            ElectiveProgress = new ProgressInfo
+                            {
+                                CompletedCredits = reader.GetDecimal(reader.GetOrdinal("CompletedElective")),
+                                TotalCredits = reader.GetDecimal(reader.GetOrdinal("TotalElective")),
+                                Percentage = CalculatePercentage(
+                                    reader.GetDecimal(reader.GetOrdinal("CompletedElective")),
+                                    reader.GetDecimal(reader.GetOrdinal("TotalElective")))
+                            },
+
+                            CompletedCourses = reader.GetInt32(reader.GetOrdinal("CompletedCourses")),
+                            OngoingCourses = reader.GetInt32(reader.GetOrdinal("OngoingCourses")),
+                            FailedCourses = reader.GetInt32(reader.GetOrdinal("FailedCourses")),
+                            RemainingCourses = reader.GetInt32(reader.GetOrdinal("RemainingCourses"))
+                        };
+
+                        return progress;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error parsing data: {ex.Message}");
+                        throw new Exception($"Error parsing progress data: {ex.Message}", ex);
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Database error: {ex.Message}");
+                throw new Exception($"Error accessing database: {ex.Message}", ex);
+            }
         }
+
         #endregion
 
         #region 私有辅助方法

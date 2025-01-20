@@ -385,6 +385,9 @@ namespace UniAcamanageWpfApp.ViewModels
 
                 // 更新图表
                 await UpdateChartsAsync();
+
+                // 加载学业进度
+                await LoadProgramProgressAsync();
             }
             catch (Exception ex)
             {
@@ -397,7 +400,49 @@ namespace UniAcamanageWpfApp.ViewModels
             }
         }
 
-private async Task LoadAcademicStatsAsync(string semester = null)
+        private async Task LoadProgramProgressAsync()
+        {
+            try
+            {
+                IsLoading = true;
+                var progress = await _academicService.GetProgramProgressAsync(_studentId);
+
+                if (progress != null)
+                {
+                    // 更新UI属性
+                    TotalProgress = Convert.ToDouble(progress.CompletionPercentage);  // 这个保持double类型
+                    CompletedCredits = progress.CompletedCredits;
+                    RequiredCredits = progress.TotalCredits;
+                    RemainingCredits = progress.TotalCredits - progress.CompletedCredits;
+
+                    // 更新各类课程进度 - 修改这三处，使用decimal
+                    RequiredProgress = progress.BaseRequiredProgress.Percentage;  // 直接赋值，因为都是decimal
+                    RequiredCreditsStatus = $"{progress.BaseRequiredProgress.CompletedCredits}/{progress.BaseRequiredProgress.TotalCredits}";
+
+                    MajorProgress = progress.MajorRequiredProgress.Percentage;   // 直接赋值，因为都是decimal
+                    MajorCreditsStatus = $"{progress.MajorRequiredProgress.CompletedCredits}/{progress.MajorRequiredProgress.TotalCredits}";
+
+                    ElectiveProgress = progress.ElectiveProgress.Percentage;     // 直接赋值，因为都是decimal
+                    ElectiveCreditsStatus = $"{progress.ElectiveProgress.CompletedCredits}/{progress.ElectiveProgress.TotalCredits}";
+
+                    // 更新课程统计
+                    CompletedCourses = progress.CompletedCourses;
+                    OngoingCourses = progress.OngoingCourses;
+                    FailedCourses = progress.FailedCourses;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"加载学业进度数据时发生错误：{ex.Message}", "错误",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        private async Task LoadAcademicStatsAsync(string semester = null)
 {
     try
     {
