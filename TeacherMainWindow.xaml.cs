@@ -10,94 +10,89 @@ using System.Configuration;
 
 namespace UniAcamanageWpfApp
 {
-    public partial class StudentMainWindow : Window
+    public partial class TeacherMainWindow : Window
     {
         // 标记侧边栏是否展开
         private bool isNavExpanded = false;
 
         private string _currentUserName;
         private string _currentUserRole;
-        private string _studentID;
-        private Student? _studentInfo;
+        private string _teacherID;
+        private Teacher? _teacherInfo;
         private static readonly string ConnectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
-        public Student? StudentInfo { get; set; }
-       
+        public Teacher? TeacherInfo { get; set; }
 
-
-        public StudentMainWindow(string username, string role, string studentID)
+        public TeacherMainWindow(string username, string role, string teacherID)
         {
             InitializeComponent();
             SideNav.Tag = "Collapsed";
 
             _currentUserName = username;
             _currentUserRole = role;
-            _studentID = studentID;
+            _teacherID = teacherID;
 
-            // 查询学生信息
-            _studentInfo = GetStudentInfo(_studentID);
-            
+            // 查询教师信息
+            _teacherInfo = GetTeacherInfo(_teacherID);
 
-            if (_studentInfo != null)
+            if (_teacherInfo != null)
             {
                 // 显示用户信息
-                StudentInfo = GetStudentInfo(_studentID);
+                TeacherInfo = GetTeacherInfo(_teacherID);
                 UserInfoPopup.DataContext = this;
             }
             else
             {
-                MessageBox.Show("未找到学生信息！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("未找到教师信息！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-
         }
 
-        // 查询学生信息的方法
-        private Student? GetStudentInfo(string studentID)
+        // 查询教师信息的方法
+        private Teacher? GetTeacherInfo(string teacherID)
         {
             try
             {
                 using (var connection = new SqlConnection(ConnectionString))
                 {
                     connection.Open();
-                    string query = @"SELECT s.*, c.ClassName
-                                     FROM Student s
-                                     INNER JOIN Class c ON s.ClassID = c.ClassID
-                                     WHERE s.StudentID = @studentID";
+                    // 修改查询语句，使用LEFT JOIN以防止部门信息缺失
+                    string query = @"
+                SELECT t.TeacherID, 
+                       t.Name, 
+                       t.Title, 
+                       t.Phone, 
+                       t.Email, 
+                       t.DepartmentID,
+                       d.DepartmentName
+                FROM Teacher t
+                LEFT JOIN Department d ON t.DepartmentID = d.DepartmentID
+                WHERE t.TeacherID = @teacherID";
 
                     using (var command = new SqlCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@studentID", studentID);
+                        command.Parameters.AddWithValue("@teacherID", teacherID);
                         using (var reader = command.ExecuteReader())
                         {
                             if (reader.Read())
                             {
-                                Student student = new Student
+                                return new Teacher
                                 {
-                                    StudentID = reader["StudentID"].ToString() ?? "",
-                                    Name = reader["Name"].ToString() ?? "",
-                                    Gender = reader["Gender"].ToString() ?? "",
-                                    BirthDate = reader["BirthDate"].ToString() ?? "",
-                                    ClassID = reader["ClassID"].ToString() ?? "",
-                                    Major = reader["Major"].ToString() ?? "",
-                                    Status = reader["Status"].ToString() ?? "",
-                                    // 添加其他需要的字段
+                                    TeacherID = reader["TeacherID"]?.ToString() ?? "",
+                                    Name = reader["Name"]?.ToString() ?? "",
+                                    Title = reader["Title"]?.ToString() ?? "",
+                                    Phone = reader["Phone"]?.ToString() ?? "",
+                                    Email = reader["Email"]?.ToString() ?? "",
+                                    DepartmentID = reader["DepartmentID"]?.ToString() ?? "",
+                                    DepartmentName = reader["DepartmentName"]?.ToString() ?? "未知院系"
                                 };
-                                // 获取 ClassName
-                                string className = reader["ClassName"].ToString() ?? "";
-                                // 如果需要，可以将 className 保存到 Student 类中，或者创建一个新的属性
-                                return student;
-                            }
-                            else
-                            {
-                                // 未找到对应的学生信息
-                                return null;
                             }
                         }
                     }
                 }
+                return null;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"数据库访问出错: {ex.Message}");
+                MessageBox.Show($"获取教师信息失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 return null;
             }
         }
@@ -137,17 +132,39 @@ namespace UniAcamanageWpfApp
                         MainContentPresenter.Content = new HomeView();
                         break;
                     case "BtnInfoQuery":
-                        // 切换到 InfoQueryView
-                        MainContentPresenter.Content = new InfoQueryView();
+                        // 切换到 TeacherInfoView
+                        MainContentPresenter.Content = new TeacherInfoView();
                         break;
-                    case "BtnSelectCourse":
-                        // 切换到 CourseSelectionView
-                        MainContentPresenter.Content = new CourseSelectionView();
+                    case "BtnCourseManage":
+                        // 切换到 CourseManagementView
+                        MainContentPresenter.Content = new TextBlock
+                        {
+                            Text = $"[{btn.Name}] - 占位内容",
+                            FontSize = 24,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center
+                        };
                         break;
-                    case "BtnAcademic":
-                        MainContentPresenter.Content = new AcademicStatusView(_studentID);
+                    case "BtnGradeManage":
+                        // 切换到 GradeManagementView
+                        MainContentPresenter.Content = new TextBlock
+                        {
+                            Text = $"[{btn.Name}] - 占位内容",
+                            FontSize = 24,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center
+                        };
                         break;
-                    // 其余的按钮
+                    case "BtnInfoManage":
+                        // 切换到 InfoManagementView
+                        MainContentPresenter.Content = new TextBlock
+                        {
+                            Text = $"[{btn.Name}] - 占位内容",
+                            FontSize = 24,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center
+                        };
+                        break;
                     default:
                         MainContentPresenter.Content = new TextBlock
                         {

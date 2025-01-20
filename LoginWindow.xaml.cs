@@ -82,11 +82,12 @@ namespace UniAcamanageWpfApp
                         this.Close();
                         break;
                     case "teacher":
-                        // 还未实现TeacherMainWindow就用简单占位
-                        MessageBox.Show("Teacher role - 还未实现TeacherMainWindow");
+                        var teacherWin = new TeacherMainWindow(username, role, linkedID);
+                        teacherWin.Show();
+                        this.Close();
                         break;
                     case "admin":
-                        // 还未实现AdminMainWindow就用简单占位
+                        // 未实现AdminMainWindow，共用teacherMainWindow
                         MessageBox.Show("Admin role - 还未实现AdminMainWindow");
                         break;
                     default:
