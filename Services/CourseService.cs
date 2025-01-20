@@ -541,7 +541,7 @@ namespace UniAcamanageWpfApp.Services
                         {
                             semesters.Add(new Semester
                             {
-                                SemesterId = reader.GetInt32(0),
+                                SemesterID = reader.GetInt32(0),
                                 SemesterName = reader.GetString(1),
                                 StartDate = reader.GetDateTime(2),
                                 EndDate = reader.GetDateTime(3),

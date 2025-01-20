@@ -5,7 +5,7 @@ namespace UniAcamanageWpfApp.Models
         public string StudentID { get; set; }
         public string Name { get; set; }
         public string Gender { get; set; }
-        public string BirthDate { get; set; }
+        public DateTime BirthDate { get; set; }
         public string ClassID { get; set; }
         public int YearOfAdmission { get; set; }
         public string Major { get; set; }

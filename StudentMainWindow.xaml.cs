@@ -75,7 +75,7 @@ namespace UniAcamanageWpfApp
                                     StudentID = reader["StudentID"].ToString() ?? "",
                                     Name = reader["Name"].ToString() ?? "",
                                     Gender = reader["Gender"].ToString() ?? "",
-                                    BirthDate = reader["BirthDate"].ToString() ?? "",
+                                    BirthDate = (DateTime)reader["BirthDate"],
                                     ClassID = reader["ClassID"].ToString() ?? "",
                                     Major = reader["Major"].ToString() ?? "",
                                     Status = reader["Status"].ToString() ?? "",

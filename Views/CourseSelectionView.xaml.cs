@@ -71,7 +71,7 @@ namespace UniAcamanageWpfApp.Views
                 var timeSlot = (TimeSlotFilter.SelectedItem as ComboBoxItem)?.Content?.ToString();
 
                 LoadingIndicator.Visibility = Visibility.Visible;
-                var filteredCourses = await _courseService.GetAvailableCoursesAsync(selectedSemester.SemesterId, courseType, timeSlot);
+                var filteredCourses = await _courseService.GetAvailableCoursesAsync(selectedSemester.SemesterID, courseType, timeSlot);
 
                 // 更新 ViewModel 的集合
                 _viewModel.AvailableCourses = new ObservableCollection<Course>(filteredCourses);
@@ -142,7 +142,7 @@ namespace UniAcamanageWpfApp.Views
             {
                 return await _courseService.GetSelectedCoursesAsync(
                     GlobalUserState.LinkedID,
-                    selectedSemester.SemesterId);
+                    selectedSemester.SemesterID);
             }
             catch (Exception ex)
             {
@@ -272,7 +272,7 @@ namespace UniAcamanageWpfApp.Views
                 // 显示加载提示
                 LoadingIndicator.Visibility = Visibility.Visible;
 
-                var courseResults = await _courseService.GetRecommendedCoursesAsync(selectedSemester.SemesterId);
+                var courseResults = await _courseService.GetRecommendedCoursesAsync(selectedSemester.SemesterID);
 
                 // 更新 ViewModel 中的集合
                 _viewModel.RecommendedBasicCourses = new ObservableCollection<Course>(courseResults.Basic);
@@ -332,7 +332,7 @@ namespace UniAcamanageWpfApp.Views
                 }
 
                 var courses = await _courseService.GetAvailableCoursesAsync(
-                    selectedSemester.SemesterId,
+                    selectedSemester.SemesterID,
                     courseType,
                     timeSlot
                 );
@@ -598,7 +598,7 @@ namespace UniAcamanageWpfApp.Views
                 if (selectedSemester == null) return;
 
                 LoadingIndicator.Visibility = Visibility.Visible;
-                var selectedCourses = await _courseService.GetSelectedCoursesAsync(studentID, selectedSemester.SemesterId);
+                var selectedCourses = await _courseService.GetSelectedCoursesAsync(studentID, selectedSemester.SemesterID);
 
                 // 更新 ViewModel 的集合
                 _viewModel.SelectedCourses = new ObservableCollection<Course>(selectedCourses);
@@ -627,7 +627,7 @@ namespace UniAcamanageWpfApp.Views
                 if (selectedSemester == null) return;
 
                 LoadingIndicator.Visibility = Visibility.Visible;
-                var selectedCourses = await _courseService.GetSelectedCoursesAsync(studentID, selectedSemester.SemesterId);
+                var selectedCourses = await _courseService.GetSelectedCoursesAsync(studentID, selectedSemester.SemesterID);
 
                 // 更新 ViewModel 的集合
                 _viewModel.CourseSelectionResults = new ObservableCollection<Course>(selectedCourses);
@@ -660,7 +660,7 @@ namespace UniAcamanageWpfApp.Views
                     var selectedSemester = SelectionSemesterComboBox.SelectedItem as Semester;
                     if (selectedSemester == null) return;
 
-                    await _courseService.SubmitCourseSelectionsAsync(selectedSemester.SemesterId,
+                    await _courseService.SubmitCourseSelectionsAsync(selectedSemester.SemesterID,
                         GetSelectedCourseCodes());
 
                     MessageBox.Show("选课提交成功！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);

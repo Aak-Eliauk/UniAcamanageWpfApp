@@ -32,9 +32,9 @@ public enum CourseSelectionStatus
 
 public class Semester
 {
-    public int SemesterId { get; set; }
+    public int SemesterID { get; set; }
     public string SemesterName { get; set; }
-    public int AcademicYearId { get; set; }
+    public int AcademicYearID { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public string AcademicYearName { get; set; }  // 添加这个属性

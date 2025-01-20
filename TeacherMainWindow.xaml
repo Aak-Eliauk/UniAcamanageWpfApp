@@ -326,7 +326,7 @@
         Click="NavButton_Click">
                             <StackPanel Style="{StaticResource SideNavStackPanelStyle}">
                                 <materialDesign:PackIcon Style="{StaticResource SideNavPackIconStyle}"
-                                Kind="BookEdit"
+                                Kind="Teacher" 
                                 Width="32" Height="32"
                                 Margin="0,0,8,0" Foreground="#FF28A745"/>
                                 <TextBlock Text="HumanMaleBoard"

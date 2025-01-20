@@ -135,28 +135,16 @@ namespace UniAcamanageWpfApp
                         // 切换到 TeacherInfoView
                         MainContentPresenter.Content = new TeacherInfoView();
                         break;
+                    case "BtnInfoManage":
+                        // 切换到 InfoManagementView
+                        MainContentPresenter.Content = new InfoManagementView();
+                        break;
                     case "BtnCourseManage":
                         // 切换到 CourseManagementView
-                        MainContentPresenter.Content = new TextBlock
-                        {
-                            Text = $"[{btn.Name}] - 占位内容",
-                            FontSize = 24,
-                            HorizontalAlignment = HorizontalAlignment.Center,
-                            VerticalAlignment = VerticalAlignment.Center
-                        };
+                        MainContentPresenter.Content = new InfoManagementView();
                         break;
                     case "BtnGradeManage":
                         // 切换到 GradeManagementView
-                        MainContentPresenter.Content = new TextBlock
-                        {
-                            Text = $"[{btn.Name}] - 占位内容",
-                            FontSize = 24,
-                            HorizontalAlignment = HorizontalAlignment.Center,
-                            VerticalAlignment = VerticalAlignment.Center
-                        };
-                        break;
-                    case "BtnInfoManage":
-                        // 切换到 InfoManagementView
                         MainContentPresenter.Content = new TextBlock
                         {
                             Text = $"[{btn.Name}] - 占位内容",

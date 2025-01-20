@@ -9,5 +9,6 @@
         public string Email { get; set; } = "";
         public string DepartmentID { get; set; } = "";
         public string DepartmentName { get; set; } = "";
+        public List<TeacherCourse> TeacherCourses { get; set; } = new List<TeacherCourse>();
     }
 }
