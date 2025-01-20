@@ -452,10 +452,11 @@
 
                                         <!-- 课程类型筛选 -->
                                         <ComboBox Grid.Column="1"
-                                    x:Name="CourseTypeFilter"
-                                    Style="{StaticResource CommonComboBoxStyle}"
-                                    materialDesign:HintAssist.Hint="课程类型"
-                                    Margin="10,0">
+          x:Name="CourseTypeFilter"
+          Style="{StaticResource CommonComboBoxStyle}"
+          materialDesign:HintAssist.Hint="课程类型"
+          Margin="10,0"
+          SelectionChanged="FilterCourses_SelectionChanged">
                                             <ComboBoxItem Content="全部类型"/>
                                             <ComboBoxItem Content="基础必修"/>
                                             <ComboBoxItem Content="专业必修"/>
@@ -464,10 +465,11 @@
 
                                         <!-- 上课时间筛选 -->
                                         <ComboBox Grid.Column="2"
-                                    x:Name="TimeSlotFilter"
-                                    Style="{StaticResource CommonComboBoxStyle}"
-                                    materialDesign:HintAssist.Hint="上课时间"
-                                    Margin="10,0">
+          x:Name="TimeSlotFilter"
+          Style="{StaticResource CommonComboBoxStyle}"
+          materialDesign:HintAssist.Hint="上课时间"
+          Margin="10,0"
+          SelectionChanged="FilterCourses_SelectionChanged">
                                             <ComboBoxItem Content="全部时间"/>
                                             <ComboBoxItem Content="上午课程"/>
                                             <ComboBoxItem Content="下午课程"/>

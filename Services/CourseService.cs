@@ -13,7 +13,8 @@ namespace UniAcamanageWpfApp.Services
         Task<List<Semester>> GetCurrentSemestersAsync();
         Task<(List<Course> Basic, List<Course> Major, List<Course> Elective)> GetRecommendedCoursesAsync(int semesterId);
         Task<bool> SubmitCourseSelectionsAsync(int semesterId, List<string> courseCodes);
-        Task<List<Course>> GetAvailableCoursesAsync(int semesterId, string courseType);
+        
+        Task<List<Course>> GetAvailableCoursesAsync(int semesterId, string courseType, string timeSlot);
         Task<bool> AddCourseSelectionAsync(string studentId, int courseId);
         Task<bool> RemoveCourseSelectionAsync(string studentId, int courseId);
         Task<List<SystemNotification>> GetSystemNotificationsAsync(string studentId);
@@ -420,40 +421,75 @@ namespace UniAcamanageWpfApp.Services
             return courses;
         }
 
-        // 在 CourseService 中修改 GetAvailableCoursesAsync 方法
-        public async Task<List<Course>> GetAvailableCoursesAsync(int semesterId, string courseType = null)
+        public async Task<List<Course>> GetAvailableCoursesAsync(int semesterId, string courseType = null, string timeSlot = null)
         {
             var courses = new List<Course>();
             using (var connection = new SqlConnection(_connectionString))
             {
                 var sql = @"
-            SELECT 
-                c.CourseID,
-                c.CourseCode,
-                c.CourseName,
-                c.CourseType,
-                c.Credit,
-                c.ScheduleTime,
-                c.Capacity,
-                ISNULL(cr.RoomNumber, '未分配') as Classroom,
-                ISNULL(t.Name, '') as TeacherName,
+            WITH SplitSchedule AS (
+                SELECT 
+                    c.CourseID,
+                    c.CourseCode,
+                    c.CourseName,
+                    c.CourseType,
+                    c.Credit,
+                    c.ScheduleTime,
+                    c.Capacity,
+                    ISNULL(cr.RoomNumber, N'未分配') as Classroom,
+                    ISNULL(t.Name, N'') as TeacherName,
+                    c.Description,
+                    value AS SingleSchedule
+                FROM Course c
+                CROSS APPLY STRING_SPLIT(c.ScheduleTime, ',') st
+                LEFT JOIN Classroom cr ON c.ClassroomID = cr.ClassroomID
+                LEFT JOIN TeacherCourse tc ON c.CourseID = tc.CourseID
+                LEFT JOIN Teacher t ON tc.TeacherID = t.TeacherID
+                WHERE c.SemesterID = @SemesterID
+                AND (@CourseType IS NULL OR c.CourseType = @CourseType)
+            ),
+            ParsedSchedule AS (
+                SELECT 
+                    *,
+                    CAST(SUBSTRING(SingleSchedule, 
+                        CHARINDEX('-', SingleSchedule) + 1,
+                        CHARINDEX('-', SingleSchedule, CHARINDEX('-', SingleSchedule) + 1) - 
+                        CHARINDEX('-', SingleSchedule) - 1) AS INT) as StartSection
+                FROM SplitSchedule
+            )
+            SELECT DISTINCT
+                ps.CourseID,
+                ps.CourseCode,
+                ps.CourseName,
+                ps.CourseType,
+                ps.Credit,
+                ps.ScheduleTime,
+                ps.Classroom,
+                ps.TeacherName,
+                ps.Description,
                 CONCAT(
-                    (SELECT COUNT(*) FROM StudentCourse WHERE CourseID = c.CourseID),
+                    (SELECT COUNT(*) FROM StudentCourse WHERE CourseID = ps.CourseID),
                     '/',
-                    c.Capacity
-                ) as CurrentCapacity,
-                c.Description
-            FROM Course c
-            LEFT JOIN Classroom cr ON c.ClassroomID = cr.ClassroomID
-            LEFT JOIN TeacherCourse tc ON c.CourseID = tc.CourseID
-            LEFT JOIN Teacher t ON tc.TeacherID = t.TeacherID
-            WHERE c.SemesterID = @SemesterID
-            AND (@CourseType IS NULL OR c.CourseType = @CourseType)";
+                    ps.Capacity
+                ) as CurrentCapacity
+            FROM ParsedSchedule ps
+            WHERE 1=1
+            AND (@TimeSlot IS NULL OR 
+                CASE @TimeSlot
+                    WHEN '1-4' THEN CASE WHEN ps.StartSection BETWEEN 1 AND 4 THEN 1 ELSE 0 END
+                    WHEN '5-8' THEN CASE WHEN ps.StartSection BETWEEN 5 AND 8 THEN 1 ELSE 0 END
+                    WHEN '9-11' THEN CASE WHEN ps.StartSection BETWEEN 9 AND 11 THEN 1 ELSE 0 END
+                    ELSE 1
+                END = 1)";
 
                 using (var command = new SqlCommand(sql, connection))
                 {
                     command.Parameters.AddWithValue("@SemesterID", semesterId);
-                    command.Parameters.AddWithValue("@CourseType", courseType ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@CourseType",
+                        string.IsNullOrEmpty(courseType) || courseType == "全部类型" ?
+                        (object)DBNull.Value : courseType);
+                    command.Parameters.AddWithValue("@TimeSlot",
+                        (object)timeSlot ?? DBNull.Value);
 
                     await connection.OpenAsync();
                     using (var reader = await command.ExecuteReaderAsync())
@@ -471,7 +507,8 @@ namespace UniAcamanageWpfApp.Services
                                 Classroom = reader.GetString(reader.GetOrdinal("Classroom")),
                                 TeacherName = reader.GetString(reader.GetOrdinal("TeacherName")),
                                 Capacity = reader.GetString(reader.GetOrdinal("CurrentCapacity")),
-                                Description = reader.IsDBNull(reader.GetOrdinal("Description")) ? null : reader.GetString(reader.GetOrdinal("Description"))
+                                Description = reader.IsDBNull(reader.GetOrdinal("Description")) ?
+                                    null : reader.GetString(reader.GetOrdinal("Description"))
                             });
                         }
                     }

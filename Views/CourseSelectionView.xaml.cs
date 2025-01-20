@@ -52,9 +52,41 @@ namespace UniAcamanageWpfApp.Views
             CourseStatusFilter.SelectionChanged += Filter_SelectionChanged;
         }
 
+        private async void FilterCourses_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            await LoadFilteredCoursesAsync();
+        }
         private async void SearchCourses_Click(object sender, RoutedEventArgs e)
         {
             await LoadAvailableCoursesAsync();
+        }
+        private async Task LoadFilteredCoursesAsync()
+        {
+            try
+            {
+                var selectedSemester = SelfSelectSemesterComboBox.SelectedItem as Semester;
+                if (selectedSemester == null) return;
+
+                var courseType = (CourseTypeFilter.SelectedItem as ComboBoxItem)?.Content?.ToString();
+                var timeSlot = (TimeSlotFilter.SelectedItem as ComboBoxItem)?.Content?.ToString();
+
+                LoadingIndicator.Visibility = Visibility.Visible;
+                var filteredCourses = await _courseService.GetAvailableCoursesAsync(selectedSemester.SemesterId, courseType, timeSlot);
+
+                // 更新 ViewModel 的集合
+                _viewModel.AvailableCourses = new ObservableCollection<Course>(filteredCourses);
+
+                // 更新统计信息
+                _viewModel.UpdateStatistics();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"加载筛选课程失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                LoadingIndicator.Visibility = Visibility.Collapsed;
+            }
         }
 
         private async void PreviewSchedule_Click(object sender, RoutedEventArgs e)
@@ -278,14 +310,32 @@ namespace UniAcamanageWpfApp.Views
                 // 获取筛选条件
                 string courseType = CourseTypeFilter.SelectedItem?.ToString();
                 if (courseType == "全部类型") courseType = null;
+                else if (courseType == "选修课程") courseType = "选修"; // 确保与数据库中的值匹配
 
-                var courses = await _courseService.GetAvailableCoursesAsync(selectedSemester.SemesterId, courseType);
-
-                // 应用时间段筛选
+                // 获取时间筛选条件
+                string timeSlot = null;
                 if (TimeSlotFilter.SelectedIndex > 0)
                 {
-                    courses = FilterCoursesByTimeSlot(courses).ToList();
+                    var selectedTimeSlot = TimeSlotFilter.SelectedItem?.ToString();
+                    switch (selectedTimeSlot)
+                    {
+                        case "上午课程":
+                            timeSlot = "1-4"; // 第1-4节
+                            break;
+                        case "下午课程":
+                            timeSlot = "5-8"; // 第5-8节
+                            break;
+                        case "晚上课程":
+                            timeSlot = "9-11"; // 第9-11节
+                            break;
+                    }
                 }
+
+                var courses = await _courseService.GetAvailableCoursesAsync(
+                    selectedSemester.SemesterId,
+                    courseType,
+                    timeSlot
+                );
 
                 // 应用课程状态筛选
                 if (CourseStatusFilter.SelectedIndex > 0)
