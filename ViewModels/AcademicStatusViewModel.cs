@@ -99,6 +99,19 @@ namespace UniAcamanageWpfApp.ViewModels
             set => SetProperty(ref _failedCourses, value);
         }
 
+        private int _remainingCourses;
+        public int RemainingCourses
+        {
+            get => _remainingCourses;
+            set
+            {
+                if (_remainingCourses != value)
+                {
+                    _remainingCourses = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         // 删除重复的字段定义，只保留一个
         private ObservableCollection<string> _semesters;
@@ -544,35 +557,36 @@ private async Task LoadGradesAsync()
         {
             try
             {
+                IsLoading = true;
                 var courses = await _academicService.GetCourseCompletionAsync(_studentId);
+
                 if (courses != null && courses.Any())
                 {
                     CoursesList = new ObservableCollection<CourseCompletionInfo>(courses);
 
-                    // 计算完成比例
-                    int totalCourses = courses.Count;
-                    int completedCourses = courses.Count(c => c.Status == "已修完成");
-                    double completionPercentage = (double)completedCourses / totalCourses * 100;
+                    // 更新课程状态统计
+                    CompletedCourses = courses.Count(c => c.Status == "已修完成");
+                    OngoingCourses = courses.Count(c => c.Status == "正在修读");
+                    FailedCourses = courses.Count(c => c.Status == "未通过");
+                    RemainingCourses = courses.Count(c => c.Status == "未修");
 
-                    // 更新进度值
-                    TotalProgress = Math.Round(completionPercentage, 1);
-                    TotalProgressValues = new ChartValues<double> { completionPercentage, 100 - completionPercentage };
-
-                    // 更新学分统计
-                    decimal totalCredits = courses.Sum(c => c.Credit);
-                    decimal completedCredits = courses.Where(c => c.Status == "已修完成").Sum(c => c.Credit);
-                    decimal remainingCredits = totalCredits - completedCredits;
-
-                    // 更新绑定属性
-                    CompletedCredits = completedCredits;
-                    RequiredCredits = totalCredits;
-                    RemainingCredits = remainingCredits;
+                    // 更新课程完成进度
+                    var requiredCourses = courses.Where(c => c.IsRequired).ToList();
+                    if (requiredCourses.Any())
+                    {
+                        var completedRequired = requiredCourses.Count(c => c.Status == "已修完成");
+                        TotalProgress = Math.Round((double)completedRequired / requiredCourses.Count * 100, 1);
+                    }
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"加载课程完成情况时发生错误：{ex.Message}", "错误",
                                MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsLoading = false;
             }
         }
 

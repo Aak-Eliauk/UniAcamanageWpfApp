@@ -260,12 +260,14 @@ namespace UniAcamanageWpfApp.Services
             await connection.OpenAsync();
 
             var query = @"
-        WITH LatestScores AS (
+        WITH LatestGrades AS (
             SELECT 
                 CourseID,
                 Score,
-                ROW_NUMBER() OVER (PARTITION BY CourseID ORDER BY SelectionDate DESC) as rn
-            FROM StudentCourse
+                SemesterName,
+                ROW_NUMBER() OVER (PARTITION BY CourseID ORDER BY AttemptNumber DESC) as rn
+            FROM Grade g
+            JOIN Semester s ON g.SemesterID = s.SemesterID
             WHERE StudentID = @StudentId
         )
         SELECT 
@@ -274,20 +276,46 @@ namespace UniAcamanageWpfApp.Services
             c.CourseName,
             c.CourseType,
             c.Credit,
-            s.SemesterName as Semester,
-            COALESCE(ls.Score, 0) as Score,
+            pc.RequirementType,
+            pc.IsRequired,
             CASE 
-                WHEN ls.Score >= 60 THEN '已修完成'
-                WHEN ls.Score IS NULL OR ls.Score = 0 THEN '未修'
-                ELSE '未通过'
-            END as Status
-        FROM Course c
-        LEFT JOIN LatestScores ls ON c.CourseID = ls.CourseID AND ls.rn = 1
-        LEFT JOIN Semester s ON c.SemesterID = s.SemesterID
+                WHEN g.Score >= 60 THEN '已修完成'
+                WHEN g.Score IS NOT NULL AND g.Score < 60 THEN '未通过'
+                WHEN sc.SelectionType = '已确认' THEN '正在修读'
+                ELSE '未修'
+            END as Status,
+            g.SemesterName as Semester,
+            g.Score,
+            CASE 
+                WHEN g.Score IS NOT NULL AND g.Score < 60 THEN '需重修'
+                WHEN sc.SelectionType = '已确认' THEN '本学期修读中'
+                ELSE NULL
+            END as Remarks
+        FROM ProgramCourse pc
+        JOIN Course c ON pc.CourseID = c.CourseID
+        JOIN StudentProgram sp ON pc.ProgramID = sp.ProgramID
+        LEFT JOIN LatestGrades g ON c.CourseID = g.CourseID AND g.rn = 1
+        LEFT JOIN StudentCourse sc ON c.CourseID = sc.CourseID 
+            AND sc.StudentID = @StudentId
+            AND NOT EXISTS (
+                SELECT 1 FROM Grade 
+                WHERE StudentID = @StudentId 
+                AND CourseID = c.CourseID 
+                AND Score >= 60
+            )
+        WHERE sp.StudentID = @StudentId
         ORDER BY c.CourseType, c.CourseCode";
 
-            var courses = await connection.QueryAsync<CourseCompletionInfo>(query, new { StudentId = studentId });
-            return courses.ToList();
+            try
+            {
+                var courses = await connection.QueryAsync<CourseCompletionInfo>(query, new { StudentId = studentId });
+                return courses.ToList();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"GetCourseCompletionAsync error: {ex.Message}");
+                throw;
+            }
         }
 
         public async Task<Dictionary<string, double>> GetGradeDistributionAsync(string studentId)

@@ -967,6 +967,9 @@ BasedOn="{StaticResource MaterialDesignRaisedButton}">
                                                                 <DataTrigger Binding="{Binding Status}" Value="未通过">
                                                                     <Setter Property="Foreground" Value="#F44336"/>
                                                                 </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Status}" Value="未修">
+                                                                    <Setter Property="Foreground" Value="#757575"/>
+                                                                </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </DataGridTextColumn.ElementStyle>

@@ -46,6 +46,8 @@ namespace UniAcamanageWpfApp.Models
         public string Semester { get; set; }
         public decimal Score { get; set; }
         public string Remarks { get; set; }
+        public bool IsRequired { get; set; }
+        public string RequirementType { get; set; }
         public int CourseID { get; set; }
         public bool IsRetake { get; set; }
     }
