@@ -15,6 +15,119 @@ namespace UniAcamanageWpfApp.ViewModels
 {
     public class AcademicStatusViewModel : INotifyPropertyChanged
     {
+        private readonly IAcademicStatusService _academicService;
+        private readonly string _studentId;
+
+        // 使用自动属性和字段定义的通用方法
+        private T SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
+        {
+            if (!EqualityComparer<T>.Default.Equals(field, value))
+            {
+                field = value;
+                OnPropertyChanged(propertyName);
+            }
+            return value;
+        }
+
+        // 进度值
+        private decimal _requiredProgress;
+        public decimal RequiredProgress
+        {
+            get => _requiredProgress;
+            set => SetProperty(ref _requiredProgress, value);
+        }
+
+        // 学分状态
+        private string _requiredCreditsStatus;
+        public string RequiredCreditsStatus
+        {
+            get => _requiredCreditsStatus;
+            set => SetProperty(ref _requiredCreditsStatus, value);
+        }
+
+        // 专业课程进度
+        private decimal _majorProgress;
+        public decimal MajorProgress
+        {
+            get => _majorProgress;
+            set => SetProperty(ref _majorProgress, value);
+        }
+
+        // 专业课程学分状态
+        private string _majorCreditsStatus;
+        public string MajorCreditsStatus
+        {
+            get => _majorCreditsStatus;
+            set => SetProperty(ref _majorCreditsStatus, value);
+        }
+
+        // 选修课程进度
+        private decimal _electiveProgress;
+        public decimal ElectiveProgress
+        {
+            get => _electiveProgress;
+            set => SetProperty(ref _electiveProgress, value);
+        }
+
+        // 选修课程学分状态
+        private string _electiveCreditsStatus;
+        public string ElectiveCreditsStatus
+        {
+            get => _electiveCreditsStatus;
+            set => SetProperty(ref _electiveCreditsStatus, value);
+        }
+
+        // 课程统计
+        private int _completedCourses;
+        public int CompletedCourses
+        {
+            get => _completedCourses;
+            set => SetProperty(ref _completedCourses, value);
+        }
+
+        private int _ongoingCourses;
+        public int OngoingCourses
+        {
+            get => _ongoingCourses;
+            set => SetProperty(ref _ongoingCourses, value);
+        }
+
+        private int _failedCourses;
+        public int FailedCourses
+        {
+            get => _failedCourses;
+            set => SetProperty(ref _failedCourses, value);
+        }
+
+
+        // 删除重复的字段定义，只保留一个
+        private ObservableCollection<string> _semesters;
+        public ObservableCollection<string> Semesters
+        {
+            get => _semesters;
+            set
+            {
+                _semesters = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private string _selectedSemester;
+        public string SelectedSemester
+        {
+            get => _selectedSemester;
+            set
+            {
+                if (_selectedSemester != value)
+                {
+                    _selectedSemester = value;
+                    OnPropertyChanged();
+                    // 当学期选择改变时，重新加载成绩数据
+                    LoadGradesAsync().ConfigureAwait(false);
+                }
+            }
+        }
+
         private ChartValues<double> _totalProgressValues;
         public ChartValues<double> TotalProgressValues
         {
@@ -61,9 +174,6 @@ namespace UniAcamanageWpfApp.ViewModels
             }
         }
 
-        private readonly IAcademicStatusService _academicService;
-        private readonly string _studentId;
-
         #region Properties
 
         private ObservableCollection<GradeInfo> _gradesList;
@@ -84,29 +194,6 @@ namespace UniAcamanageWpfApp.ViewModels
             set
             {
                 _coursesList = value;
-                OnPropertyChanged();
-            }
-        }
-
-        private string _selectedSemester;
-        public string SelectedSemester
-        {
-            get => _selectedSemester;
-            set
-            {
-                _selectedSemester = value;
-                OnPropertyChanged();
-                LoadGradesAsync();
-            }
-        }
-
-        private ObservableCollection<string> _semesters;
-        public ObservableCollection<string> Semesters
-        {
-            get => _semesters;
-            set
-            {
-                _semesters = value;
                 OnPropertyChanged();
             }
         }
@@ -238,6 +325,9 @@ namespace UniAcamanageWpfApp.ViewModels
             CoursesList = new ObservableCollection<CourseCompletionInfo>();
             Semesters = new ObservableCollection<string>();
             TotalProgressValues = new ChartValues<double> { 0, 100 };
+            GPATrendValues = new ChartValues<double>();
+            SemesterLabels = new List<string>();
+
 
             // Initialize commands
             ExportGradesCommand = new RelayCommand(ExportGrades);
@@ -259,9 +349,10 @@ namespace UniAcamanageWpfApp.ViewModels
                 var semestersTask = _academicService.GetSemestersAsync(_studentId);
                 var academicStatsTask = _academicService.GetAcademicStatsAsync(_studentId);
                 var gradesTask = _academicService.GetGradesAsync(_studentId, null);
+                var programProgressTask = _academicService.GetProgramProgressAsync(_studentId);  // 添加这一行
 
                 // 等待所有任务完成
-                await Task.WhenAll(studentInfoTask, semestersTask, academicStatsTask, gradesTask);
+                await Task.WhenAll(studentInfoTask, semestersTask, academicStatsTask, gradesTask, programProgressTask);
 
                 // 更新学生信息
                 var (major, grade) = await studentInfoTask;
@@ -306,58 +397,101 @@ namespace UniAcamanageWpfApp.ViewModels
             }
         }
 
-        private async Task LoadAcademicStatsAsync()
+private async Task LoadAcademicStatsAsync(string semester = null)
+{
+    try
+    {
+        // 修改 GetAcademicStatsAsync 方法，添加 semester 参数
+        var stats = await _academicService.GetAcademicStatsAsync(_studentId, semester);
+        if (stats != null)
+        {
+            OverallGPA = stats.OverallGPA;
+            BaseRequiredGPA = stats.BaseRequiredGPA;
+            MajorRequiredGPA = stats.MajorRequiredGPA;
+            ElectiveGPA = stats.ElectiveGPA;
+            ClassRanking = stats.ClassRanking;
+        }
+        else
+        {
+            MessageBox.Show("无法获取学业统计信息。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+    catch (Exception ex)
+    {
+        MessageBox.Show($"加载学业统计信息时发生错误：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+    }
+}
+
+private async Task LoadGradesAsync()
+{
+    try
+    {
+        IsLoading = true;
+        string selectedSemester = SelectedSemester == "全部学期" ? null : SelectedSemester;
+
+        // 加载成绩数据
+        var grades = await _academicService.GetGradesAsync(_studentId, selectedSemester);
+        GradesList = new ObservableCollection<GradeInfo>(grades ?? new List<GradeInfo>());
+
+        // 加载对应学期的学业统计数据
+        await LoadAcademicStatsAsync(selectedSemester);
+
+        // 更新图表显示
+        await UpdateChartsAsync();
+    }
+    catch (Exception ex)
+    {
+        MessageBox.Show($"加载成绩数据时发生错误：{ex.Message}", "错误",
+                       MessageBoxButton.OK, MessageBoxImage.Error);
+    }
+    finally
+    {
+        IsLoading = false;
+    }
+}
+
+        private async Task LoadSemestersAsync()
         {
             try
             {
-                var stats = await _academicService.GetAcademicStatsAsync(_studentId);
-                if (stats != null)
+                var semesterList = await _academicService.GetSemestersAsync(_studentId);
+                Semesters = new ObservableCollection<string>();
+                Semesters.Add("全部学期"); // 添加"全部学期"选项
+                foreach (var semester in semesterList)
                 {
-                    OverallGPA = stats.OverallGPA;
-                    BaseRequiredGPA = stats.BaseRequiredGPA;
-                    MajorRequiredGPA = stats.MajorRequiredGPA;
-                    ElectiveGPA = stats.ElectiveGPA;
-                    ClassRanking = stats.ClassRanking;
+                    Semesters.Add(semester);
                 }
-                else
-                {
-                    MessageBox.Show("无法获取学业统计信息。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-                }
+
+                // 默认选择"全部学期"
+                SelectedSemester = "全部学期";
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"加载学业统计信息时发生错误：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"加载学期数据时发生错误：{ex.Message}", "错误",
+                               MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        private async Task LoadGradesAsync()
-        {
-            try
-            {
-                IsLoading = true;
-                var grades = await _academicService.GetGradesAsync(_studentId,
-                    SelectedSemester == "全部学期" ? null : SelectedSemester);
 
-                if (grades != null && grades.Any())
-                {
-                    GradesList = new ObservableCollection<GradeInfo>(grades);
-                    await UpdateChartsAsync(); // 更新图表以反映新的成绩数据
-                }
-                else
-                {
-                    GradesList.Clear();
-                    MessageBox.Show("没有找到相关成绩记录。", "提示",
-                                  MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-            }
-            catch (Exception ex)
+        private ChartValues<double> _gpaTrendValues;
+        public ChartValues<double> GPATrendValues
+        {
+            get => _gpaTrendValues;
+            set
             {
-                MessageBox.Show($"加载成绩数据时发生错误：{ex.Message}", "错误",
-                               MessageBoxButton.OK, MessageBoxImage.Error);
+                _gpaTrendValues = value;
+                OnPropertyChanged();
             }
-            finally
+        }
+
+        private List<string> _semesterLabels;
+        public List<string> SemesterLabels
+        {
+            get => _semesterLabels;
+            set
             {
-                IsLoading = false;
+                _semesterLabels = value;
+                OnPropertyChanged();
             }
         }
 
@@ -435,42 +569,84 @@ namespace UniAcamanageWpfApp.ViewModels
         {
             try
             {
-                // 更新 GPA 趋势图表
+                // 更新 GPA 趋势图
                 var semesterGPAs = await _academicService.GetSemesterGPAsAsync(_studentId);
-                if (semesterGPAs != null && semesterGPAs.Any())
-                {
-                    GPAChartSeries = new SeriesCollection
+                GPATrendValues = new ChartValues<double>(semesterGPAs);
+
+                GPAChartSeries = new SeriesCollection
             {
                 new LineSeries
                 {
                     Title = "学期GPA",
-                    Values = new ChartValues<double>(semesterGPAs),
+                    Values = GPATrendValues,
                     PointGeometry = DefaultGeometries.Circle,
                     PointGeometrySize = 8
                 }
             };
+
+                // 更新成绩分布图
+                var distribution = await _academicService.GetGradeDistributionAsync(_studentId);
+                GradeDistributionSeries = new SeriesCollection();
+                foreach (var item in distribution)
+                {
+                    GradeDistributionSeries.Add(new PieSeries
+                    {
+                        Title = item.Key,
+                        Values = new ChartValues<double> { item.Value },
+                        DataLabels = true,
+                        LabelPoint = point => $"{item.Key}: {point.Y:F1}%"
+                    });
                 }
 
-                // 更新成绩分布图表
-                var distribution = await _academicService.GetGradeDistributionAsync(_studentId);
-                if (distribution != null && distribution.Any())
-                {
-                    GradeDistributionSeries = new SeriesCollection();
-                    foreach (var item in distribution)
-                    {
-                        GradeDistributionSeries.Add(new PieSeries
-                        {
-                            Title = item.Key,
-                            Values = new ChartValues<double> { item.Value },
-                            DataLabels = true,
-                            LabelPoint = point => $"{item.Key}: {point.Y:F1}%"
-                        });
-                    }
-                }
+                OnPropertyChanged(nameof(GPATrendValues));
+                OnPropertyChanged(nameof(GPAChartSeries));
+                OnPropertyChanged(nameof(GradeDistributionSeries));
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"更新图表时发生错误：{ex.Message}", "错误",
+                               MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async Task UpdateProgramProgressAsync()
+        {
+            try
+            {
+                var progress = await _academicService.GetProgramProgressAsync(_studentId);
+
+                // 更新总体进度 - 添加显式转换
+                TotalProgress = Convert.ToDouble(progress.CompletionPercentage);
+                CompletedCredits = progress.CompletedCredits;
+                RequiredCredits = progress.TotalCredits;
+                RemainingCredits = progress.TotalCredits - progress.CompletedCredits;
+
+                // 更新各类课程进度 - 添加显式转换
+                RequiredProgress = Convert.ToDecimal(progress.BaseRequiredProgress.Percentage);
+                RequiredCreditsStatus = $"{progress.BaseRequiredProgress.CompletedCredits}/{progress.BaseRequiredProgress.TotalCredits}";
+
+                MajorProgress = Convert.ToDecimal(progress.MajorRequiredProgress.Percentage);
+                MajorCreditsStatus = $"{progress.MajorRequiredProgress.CompletedCredits}/{progress.MajorRequiredProgress.TotalCredits}";
+
+                ElectiveProgress = Convert.ToDecimal(progress.ElectiveProgress.Percentage);
+                ElectiveCreditsStatus = $"{progress.ElectiveProgress.CompletedCredits}/{progress.ElectiveProgress.TotalCredits}";
+
+                // 更新课程统计
+                CompletedCourses = progress.CompletedCourses;
+                OngoingCourses = progress.OngoingCourses;
+                FailedCourses = progress.FailedCourses;
+
+                // 更新进度环图数据 - 使用显式转换
+                var completionPercentage = Convert.ToDouble(progress.CompletionPercentage);
+                TotalProgressValues = new ChartValues<double>
+        {
+            completionPercentage,
+            100 - completionPercentage
+        };
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"更新培养方案进度时发生错误：{ex.Message}", "错误",
                                MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }

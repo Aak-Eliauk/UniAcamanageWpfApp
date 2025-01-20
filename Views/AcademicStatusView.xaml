@@ -193,12 +193,18 @@ BasedOn="{StaticResource MaterialDesignRaisedButton}">
 
                                     <!-- 学期选择器 -->
                                     <ComboBox DockPanel.Dock="Right"
-                                            Width="200"
-                                            Style="{StaticResource CommonComboBoxStyle}"
-                                            materialDesign:HintAssist.Hint="选择学期"
-                                            ItemsSource="{Binding Semesters}"        
-                                            SelectedItem="{Binding SelectedSemester}"
-                                            x:Name="SemesterComboBox"/>
+          Width="200"
+          Style="{StaticResource CommonComboBoxStyle}"
+          materialDesign:HintAssist.Hint="选择学期"
+          ItemsSource="{Binding Semesters, UpdateSourceTrigger=PropertyChanged}"        
+          SelectedItem="{Binding SelectedSemester, UpdateSourceTrigger=PropertyChanged}"
+          x:Name="SemesterComboBox">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
                                 </DockPanel>
 
                                 <!-- GPA和排名信息卡片 -->
@@ -486,9 +492,47 @@ BasedOn="{StaticResource MaterialDesignRaisedButton}">
                                                         </Style>
                                                     </DataGridTextColumn.ElementStyle>
                                                 </DataGridTextColumn>
-                                                <DataGridTextColumn Header="绩点" 
-                                                                  Binding="{Binding BaseGradePoint}"
-                                                                  Width="60"/>
+                                                
+                                                <DataGridTemplateColumn Header="绩点" Width="60">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="{Binding BaseGradePoint}">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsRetake}" Value="True">
+                                                                                <Setter Property="Text" Value="1.0"/>
+                                                                                <Setter Property="Foreground" Value="#FF5722"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+
+                                                <DataGridTemplateColumn Header="重修标记" Width="80">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock>
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Text" Value="正常"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsRetake}" Value="True">
+                                                                                <Setter Property="Text" Value="重修"/>
+                                                                                <Setter Property="Foreground" Value="#FF5722"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+
+
                                                 <DataGridTextColumn Header="修读方式" 
                                                                   Binding="{Binding CourseStatus}"
                                                                   Width="100"/>
