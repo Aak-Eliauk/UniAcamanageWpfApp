@@ -141,7 +141,7 @@ namespace UniAcamanageWpfApp
                         break;
                     case "BtnCourseManage":
                         // 切换到 CourseManagementView
-                        MainContentPresenter.Content = new InfoManagementView();
+                        MainContentPresenter.Content = new TeachingManagementView();
                         break;
                     case "BtnGradeManage":
                         // 切换到 GradeManagementView

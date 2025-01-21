@@ -721,7 +721,7 @@
                                             <DataGridTextColumn.CellStyle>
                                                 <Style TargetType="DataGridCell">
                                                     <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding ApprovalStatus}" Value="已通过">
+                                                        <DataTrigger Binding="{Binding ApprovalStatus}" Value="已确认">
                                                             <Setter Property="Foreground" Value="#4CAF50"/>
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding ApprovalStatus}" Value="待审核">

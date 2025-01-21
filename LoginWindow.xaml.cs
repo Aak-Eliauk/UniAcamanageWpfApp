@@ -87,8 +87,9 @@ namespace UniAcamanageWpfApp
                         this.Close();
                         break;
                     case "admin":
-                        // 未实现AdminMainWindow，共用teacherMainWindow
-                        MessageBox.Show("Admin role - 还未实现AdminMainWindow");
+                        var adminWin = new TeacherMainWindow(username, role, linkedID);
+                        adminWin .Show();
+                        this.Close();
                         break;
                     default:
                         // 未知角色

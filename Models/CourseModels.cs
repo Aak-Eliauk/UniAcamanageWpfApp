@@ -13,7 +13,7 @@
     public bool IsSelected { get; set; }
     public string Status { get; set; }
     public int SemesterId { get; set; }
-    public string ApprovalStatus { get; set; }  // "已通过", "待审核", "未通过"
+    public string ApprovalStatus { get; set; }  // "已确认", "待审核", "未通过"
     public string RejectReason { get; set; }
 }
 

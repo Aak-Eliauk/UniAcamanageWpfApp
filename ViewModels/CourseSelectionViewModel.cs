@@ -190,7 +190,7 @@ namespace UniAcamanageWpfApp.ViewModels
                 return 0;
             }
 
-            int approvedCount = SelectedCourses.Count(c => c.ApprovalStatus == "已通过");
+            int approvedCount = SelectedCourses.Count(c => c.ApprovalStatus == "已确认");
             return (double)approvedCount / SelectedCourses.Count * 100;
         }
 

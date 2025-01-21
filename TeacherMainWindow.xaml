@@ -329,7 +329,7 @@
                                 Kind="Teacher" 
                                 Width="32" Height="32"
                                 Margin="0,0,8,0" Foreground="#FF28A745"/>
-                                <TextBlock Text="HumanMaleBoard"
+                                <TextBlock Text="教学管理"
                    Style="{StaticResource SideNavTextStyle}" Foreground="#FF28A745"/>
                             </StackPanel>
                         </Button>
