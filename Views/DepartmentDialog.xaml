@@ -1,0 +1,49 @@
+﻿<Window x:Class="UniAcamanageWpfApp.Views.DepartmentDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="院系信息" Height="300" Width="400"
+        WindowStartupLocation="CenterOwner"
+        Style="{StaticResource MaterialDesignWindow}">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBox Grid.Row="0"
+                 x:Name="DepartmentIdBox"
+                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                 Margin="0,0,0,16"
+                 materialDesign:HintAssist.Hint="院系编号"/>
+
+        <TextBox Grid.Row="1"
+                 x:Name="DepartmentNameBox"
+                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                 Margin="0,0,0,16"
+                 materialDesign:HintAssist.Hint="院系名称"/>
+
+        <TextBox Grid.Row="2"
+                 x:Name="OfficePhoneBox"
+                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                 Margin="0,0,0,16"
+                 materialDesign:HintAssist.Hint="办公电话"/>
+
+        <StackPanel Grid.Row="4" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right">
+            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Margin="0,0,8,0"
+                    Click="Cancel_Click">
+                取消
+            </Button>
+            <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                    Click="Save_Click">
+                保存
+            </Button>
+        </StackPanel>
+    </Grid>
+</Window>

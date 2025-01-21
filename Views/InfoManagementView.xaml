@@ -98,7 +98,7 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="BorderBrush" Value="#DDDDDD"/>
             <Setter Property="Background" Value="White"/>
-            <Setter Property="RowHeight" Value="35"/>
+            <Setter Property="RowHeight" Value="50"/>
             <Setter Property="HeadersVisibility" Value="Column"/>
             <!-- 添加以下滚动设置 -->
             <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
@@ -177,8 +177,7 @@
                                          FontWeight="Bold"
                                          DockPanel.Dock="Left"/>
                                 <Button DockPanel.Dock="Right"
-            Command="{Binding AddTeacherCommand}"
-            Style="{StaticResource AnimatedButtonStyle}">
+                                    Click="AddTeacher_Click">
                                     <StackPanel Orientation="Horizontal">
                                         <materialDesign:PackIcon Kind="Plus" 
                                    Margin="0,0,8,0"/>
@@ -202,17 +201,17 @@
                                         materialDesign:HintAssist.Hint="输入教师工号或姓名搜索"
                                         Margin="0,0,10,0"/>
 
+                                <!-- 院系下拉框 -->
                                 <ComboBox Grid.Column="1"
-                                         x:Name="DepartmentFilterComboBox"
-                                          ItemsSource="{Binding Departments}"
-                                          SelectedItem="{Binding SelectedDepartment}"
-                                         Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                         materialDesign:HintAssist.Hint="选择院系"
-                                         Margin="0,0,10,0"/>
+                                    x:Name="DepartmentFilterComboBox"
+          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+          materialDesign:HintAssist.Hint="选择院系"
+          SelectionChanged="DepartmentManageComboBox_SelectionChanged"
+          Margin="0,0,10,0"/>
 
                                 <Button Grid.Column="2"
                                         Content="搜索"
-                                        Command="{Binding SearchTeacherCommand}"
+                                        Click="SearchTeacher_Click"
                                         Style="{StaticResource AnimatedButtonStyle}"
                                         Width="100"
                                         />
@@ -231,29 +230,24 @@
                                     <DataGridTextColumn Header="所属院系" Binding="{Binding DepartmentName}" Width="150"/>
                                     <DataGridTextColumn Header="联系电话" Binding="{Binding Phone}" Width="120"/>
                                     <DataGridTextColumn Header="电子邮箱" Binding="{Binding Email}" Width="180"/>
+                                    <!-- 教师DataGrid的操作列 -->
                                     <DataGridTemplateColumn Header="操作" Width="120">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal">
                                                     <Button Style="{StaticResource MaterialDesignIconButton}"
-                                                            Command="{Binding DataContext.EditTeacherCommand, 
-                                          RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                CommandParameter="{Binding}"
-                                                            ToolTip="编辑">
+                        Click="EditTeacher_Click"
+                        ToolTip="编辑"
+                        Margin="0,0,4,0"
+                        Height="35"
+                        Width="35">
                                                         <materialDesign:PackIcon Kind="Edit"/>
                                                     </Button>
                                                     <Button Style="{StaticResource MaterialDesignIconButton}"
-                                                            Command="{Binding DataContext.ViewTeacherDetailCommand, 
-                                                            RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                            CommandParameter="{Binding}"
-                                                            ToolTip="查看详情">
-                                                        <materialDesign:PackIcon Kind="Eye"/>
-                                                    </Button>
-                                                    <Button Style="{StaticResource MaterialDesignIconButton}"
-                        Command="{Binding DataContext.DeleteTeacherCommand, 
-                        RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                        CommandParameter="{Binding}"
-                        ToolTip="删除">
+                        Click="DeleteTeacher_Click"
+                        ToolTip="删除"
+                        Height="35"
+                        Width="35">
                                                         <materialDesign:PackIcon Kind="Delete"/>
                                                     </Button>
                                                 </StackPanel>
@@ -300,8 +294,7 @@
                FontWeight="Bold"
                DockPanel.Dock="Left"/>
                                 <Button DockPanel.Dock="Right"
-            Command="{Binding AddStudentCommand}"
-            Style="{StaticResource AnimatedButtonStyle}">
+                                    Click="AddStudent_Click">
                                     <StackPanel Orientation="Horizontal">
                                         <materialDesign:PackIcon Kind="Plus" 
                                    Margin="0,0,8,0"/>
@@ -326,62 +319,67 @@
                                         materialDesign:HintAssist.Hint="输入学号或姓名搜索"
                                         Margin="0,0,10,0"/>
 
+                                <!-- 专业下拉框 -->
                                 <ComboBox Grid.Column="1"
-                                         x:Name="MajorFilterComboBox"
-                                         ItemsSource="{Binding Majors}"
-          SelectedItem="{Binding SelectedMajor}"
-                                         Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                         materialDesign:HintAssist.Hint="选择专业"
-                                         Margin="0,0,10,0"/>
+                                    x:Name="MajorFilterComboBox"
+          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+          materialDesign:HintAssist.Hint="选择专业"
+          Margin="0,0,10,0"/>
 
+                                <!-- 班级下拉框 -->
                                 <ComboBox Grid.Column="2"
-                                         x:Name="ClassFilterComboBox"
-                                         ItemsSource="{Binding Classes}"
-          SelectedItem="{Binding SelectedClass}"
-                                         Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                         materialDesign:HintAssist.Hint="选择班级"
-                                         Margin="0,0,10,0"/>
+                                    x:Name="ClassFilterComboBox"
+          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+          materialDesign:HintAssist.Hint="选择班级"
+          Margin="0,0,10,0"/>
 
                                 <Button Grid.Column="3"
                                         Content="搜索"
-                                        Command="{Binding SearchStudentCommand}"
-                                        Style="{StaticResource AnimatedButtonStyle}"
+                                        Click="SearchStudent_Click"
                                         Width="100"
                                         />
                             </Grid>
 
                             <!-- 学生列表 -->
                             <DataGrid Grid.Row="2"
-                                     x:Name="StudentDataGrid"
-                                      ItemsSource="{Binding Students}"
+          x:Name="StudentDataGrid"
+          ItemsSource="{Binding Students}"
           SelectedItem="{Binding SelectedStudent}"
-                                     Style="{StaticResource CommonDataGridStyle}">
+          Style="{StaticResource CommonDataGridStyle}">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="学号" Binding="{Binding StudentID}" Width="100"/>
-                                    <DataGridTextColumn Header="姓名" Binding="{Binding Name}" Width="100"/>
-                                    <DataGridTextColumn Header="专业" Binding="{Binding Major}" Width="150"/>
+                                    <DataGridTextColumn Header="姓名" Binding="{Binding Name}" Width="80"/>
+                                    <DataGridTextColumn Header="性别" Binding="{Binding Gender}" Width="50"/>
+                                    <DataGridTextColumn Header="专业" Binding="{Binding Major}" Width="120"/>
                                     <DataGridTextColumn Header="班级" Binding="{Binding ClassName}" Width="100"/>
-                                    <DataGridTextColumn Header="入学年份" Binding="{Binding EnrollmentYear}" Width="100"/>
-                                    <DataGridTextColumn Header="学籍状态" Binding="{Binding Status}" Width="100"/>
-                                    <DataGridTemplateColumn Header="操作" Width="120">
+                                    <DataGridTextColumn Header="入学年份" Binding="{Binding YearOfAdmission}" Width="80"/>
+                                    <DataGridTextColumn Header="学籍状态" Binding="{Binding Status}" Width="80"/>
+                                    <!-- 操作列 -->
+                                    <DataGridTemplateColumn Header="操作" Width="180">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal">
                                                     <Button Style="{StaticResource MaterialDesignIconButton}"
-                                                            Click="EditStudent_Click"
-                                                            ToolTip="编辑">
+                                Click="ViewStudentDetails_Click"
+                                ToolTip="查看详情"
+                                Margin="0,0,4,0"
+                                Height="35"
+                                Width="35">
+                                                        <materialDesign:PackIcon Kind="Information"/>
+                                                    </Button>
+                                                    <Button Style="{StaticResource MaterialDesignIconButton}"
+                                Click="EditStudent_Click"
+                                ToolTip="编辑"
+                                Margin="0,0,4,0"
+                                Height="35"
+                                Width="35">
                                                         <materialDesign:PackIcon Kind="Edit"/>
                                                     </Button>
                                                     <Button Style="{StaticResource MaterialDesignIconButton}"
-                                                            Command="{Binding ViewStudentDetailCommand}"
-                                                            ToolTip="查看详情">
-                                                        <materialDesign:PackIcon Kind="Eye"/>
-                                                    </Button>
-                                                    <Button Style="{StaticResource MaterialDesignIconButton}"
-                        Command="{Binding DataContext.DeleteStudentCommand,
-                        RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                        CommandParameter="{Binding}"
-                        ToolTip="删除">
+                                Click="DeleteStudent_Click"
+                                ToolTip="删除"
+                                Height="35"
+                                Width="35">
                                                         <materialDesign:PackIcon Kind="Delete"/>
                                                     </Button>
                                                 </StackPanel>
@@ -428,22 +426,20 @@
                FontSize="28"
                FontWeight="Bold"
                DockPanel.Dock="Left"/>
+                                <!-- 修改按钮名称和图标 -->
                                 <StackPanel DockPanel.Dock="Right" 
-                Orientation="Horizontal"
-                Margin="10,0,0,0">
-                                    <Button Command="{Binding AddDepartmentCommand}"
-                Style="{StaticResource MaterialDesignOutlinedButton}"
-                Margin="0,0,10,0">
+            Orientation="Horizontal"
+            Margin="10,0,0,0">
+                                    <Button Click="ManageDepartments_Click">
                                         <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Kind="Plus" Margin="0,0,8,0"/>
-                                            <TextBlock Text="添加院系"/>
+                                            <materialDesign:PackIcon Kind="Building" Margin="0,0,10,0"/>
+                                            <TextBlock Text="管理学院"/>
                                         </StackPanel>
                                     </Button>
-                                    <Button Command="{Binding AddClassCommand}"
-                Style="{StaticResource AnimatedButtonStyle}">
+                                    <Button Click="ManageClasses_Click" Margin="10,0,0,0">
                                         <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Kind="Plus" Margin="0,0,8,0"/>
-                                            <TextBlock Text="添加班级"/>
+                                            <materialDesign:PackIcon Kind="AccountMultiple" Margin="0,0,10,0"/>
+                                            <TextBlock Text="管理班级"/>
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>
@@ -452,44 +448,53 @@
                             <!-- 搜索和筛选条件 -->
                             <Grid Grid.Row="1" Margin="0,0,0,20">
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <ComboBox Grid.Column="0"
-                                         x:Name="DepartmentComboBox"
-                                         ItemsSource="{Binding Departments}"
-          SelectedItem="{Binding SelectedDepartment}"
-                                         Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                         materialDesign:HintAssist.Hint="选择院系"
-                                         Margin="0,0,10,0"
-                                         SelectionChanged="DepartmentComboBox_SelectionChanged"/>
-
-                                <ComboBox Grid.Column="1"
-                                         x:Name="YearComboBox"
-                                         ItemsSource="{Binding Years}"
-          SelectedItem="{Binding SelectedYear}"
-                                         Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                         materialDesign:HintAssist.Hint="选择年级"
-                                         Margin="0,0,10,0"
-                                         SelectionChanged="YearComboBox_SelectionChanged"/>
+                                <!-- 院系筛选 -->
+                                <TextBlock x:Name="SearchResultCount"
+           Grid.Column="1"
+           Margin="0,10,0,10"
+           Foreground="{StaticResource PrimaryBrush}"/>
 
                                 <ComboBox Grid.Column="2"
-                                         x:Name="ClassComboBox"
-                                         ItemsSource="{Binding Classes}"
-          SelectedItem="{Binding SelectedClass}"
-                                         Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                         materialDesign:HintAssist.Hint="选择班级"
-                                         Margin="0,0,10,0"/>
+                                    x:Name="YearComboBox"
+          Style="{StaticResource CommonComboBoxStyle}"
+          materialDesign:HintAssist.Hint="选择年份"
+          SelectionChanged="YearComboBox_SelectionChanged"
+          Margin="0,0,10,0"/>
 
-                                <Button Grid.Column="3"
-                                        Content="查询名单"
-                                        Command="{Binding QueryClassListCommand}"
-                                        Style="{StaticResource AnimatedButtonStyle}"
-                                        Width="100"
-                                        />
+                                <ComboBox Grid.Column="3"
+          x:Name="DepartmentComboBox"
+          Style="{StaticResource CommonComboBoxStyle}"
+          materialDesign:HintAssist.Hint="选择院系"
+          SelectionChanged="DepartmentManageComboBox_SelectionChanged"
+          Margin="0,0,10,0"/>
+
+                                <ComboBox Grid.Column="4"
+          x:Name="ClassComboBox"
+          Style="{StaticResource CommonComboBoxStyle}"
+          materialDesign:HintAssist.Hint="选择班级"
+          Margin="0,0,10,0"/>
+
+                                <!-- 搜索按钮 -->
+                                <Button Grid.Column="5"
+            Content="搜索"
+            Click="SearchClassStudent_Click"
+            Style="{StaticResource AnimatedButtonStyle}"
+            Margin="0,0,10,0"/>
+
+                                <!-- 清除筛选按钮 -->
+                                <Button Grid.Column="6"
+Content="清除筛选"
+Click="ClearFilters_Click"
+Style="{StaticResource MaterialDesignOutlinedButton}" Grid.ColumnSpan="2"/>
                             </Grid>
 
                             <!-- 班级学生名单 -->
@@ -504,49 +509,59 @@
                                     <DataGridTextColumn Header="院系" Binding="{Binding DepartmentName}" Width="150"/>
                                     <DataGridTextColumn Header="专业" Binding="{Binding Major}" Width="150"/>
                                     <DataGridTextColumn Header="班级" Binding="{Binding ClassName}" Width="100"/>
-                                    <DataGridTextColumn Header="入学年份" Binding="{Binding EnrollmentYear}" Width="100"/>
-                                    <DataGridTemplateColumn Header="操作" Width="100">
+                                    <DataGridTextColumn Header="入学年份" Binding="{Binding YearOfAdmission}" Width="100"/>
+                                    <!-- 班级学生DataGrid的操作列 -->
+                                    <DataGridTemplateColumn Header="操作" Width="120">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <Button Style="{StaticResource MaterialDesignIconButton}"
-                                                        Command="{Binding ViewStudentDetailCommand}"
-                                                        ToolTip="查看详情">
-                                                    <materialDesign:PackIcon Kind="Eye"/>
-                                                </Button>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Button Style="{StaticResource MaterialDesignIconButton}"
+                        Click="EditClassStudent_Click"
+                        ToolTip="编辑"
+                        Margin="0,0,4,0"
+                        Height="35"
+                        Width="35">
+                                                        <materialDesign:PackIcon Kind="Edit"/>
+                                                    </Button>
+                                                    <Button Style="{StaticResource MaterialDesignIconButton}"
+                        Click="DeleteClassStudent_Click"
+                        ToolTip="删除"
+                        Height="35"
+                        Width="35">
+                                                        <materialDesign:PackIcon Kind="Delete"/>
+                                                    </Button>
+                                                </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
                                 </DataGrid.Columns>
                             </DataGrid>
+                            
 
                             <!-- 统计信息和操作按钮 -->
                             <DockPanel Grid.Row="3" Margin="0,20,0,0">
-                                <!-- 左侧统计信息 -->
-                                <StackPanel DockPanel.Dock="Left" 
-                                          Orientation="Horizontal">
-                                    <TextBlock Text="总人数："/>
-                                    <TextBlock Text="{Binding TotalStudents}"
-                                             Foreground="{StaticResource PrimaryBrush}"
-                                             FontWeight="Bold"
-                                             Margin="5,0"/>
-                                    <TextBlock Text="人"/>
-                                </StackPanel>
 
-                                <!-- 右侧操作按钮 -->
-                                <StackPanel DockPanel.Dock="Right" 
+                            </DockPanel>
+                            <!-- 右侧操作按钮 -->
+                            <StackPanel Grid.Row="3"
+                                DockPanel.Dock="Bottom" 
                                           Orientation="Horizontal"
                                           HorizontalAlignment="Right">
-                                    <Button Content="导出名单"
-                                            Command="{Binding ExportStudentListCommand}"
-                                            Style="{StaticResource MaterialDesignOutlinedButton}"
-                                            Margin="0,0,10,0"
-                                            />
-                                    <Button Content="打印名单"
-                                            Command="{Binding PrintStudentListCommand}"
-                                            Style="{StaticResource MaterialDesignOutlinedButton}"
-                                            />
-                                </StackPanel>
-                            </DockPanel>
+                                <Button Content="导出名单"
+        Click="ExportStudentList_Click"
+        Style="{StaticResource MaterialDesignOutlinedButton}"
+        Margin="0,360,10,0">
+                                    <Button.ContentTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="FileExcel" 
+                                       Margin="0,0,8,0"/>
+                                                <TextBlock Text="导出名单"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </Button.ContentTemplate>
+                                </Button>
+                            </StackPanel>
                         </Grid>
                     </materialDesign:Card>
                 </ScrollViewer>
@@ -680,19 +695,26 @@
                                                     <Button Style="{StaticResource MaterialDesignIconButton}"
                                                 Click="EditSemester_Click"
                                                 ToolTip="编辑"
-                                                Margin="0,0,8,0">
+                                                            Margin="0,0,4,0"
+                                                            Height="35"
+                                                            Width="35">
                                                         <materialDesign:PackIcon Kind="Edit"/>
                                                     </Button>
                                                     <Button Style="{StaticResource MaterialDesignIconButton}"
                                                         Command="{Binding SetCurrentSemesterCommand}"
                                                         CommandParameter="{Binding}"
                                                 ToolTip="设为当前学期"
-                                                Margin="0,0,8,0">
+                                                            Margin="0,0,4,0"
+                                                            Height="35"
+                                                            Width="35">
                                                         <materialDesign:PackIcon Kind="Star"/>
                                                     </Button>
                                                     <Button Style="{StaticResource MaterialDesignIconButton}"
                                                 Click="DeleteSemester_Click"
-                                                ToolTip="删除">
+                                                ToolTip="删除"
+                                                            Margin="0,0,4,0"
+                                                            Height="35"
+                                                            Width="35">
                                                         <materialDesign:PackIcon Kind="Delete"/>
                                                     </Button>
                                                 </StackPanel>
@@ -705,55 +727,54 @@
                     </materialDesign:Card>
                 </ScrollViewer>
             </TabItem>
-
-            <!-- 添加/编辑学期对话框模板 -->
-            <materialDesign:DialogHost x:Name="SemesterDialog">
-                <materialDesign:DialogHost.DialogContent>
-                    <StackPanel Margin="16" MinWidth="400">
-                        <TextBlock x:Name="SemesterDialogTitle"
-                      Text="添加新学期"
-                      FontSize="20"
-                      FontWeight="Bold"
-                      Margin="0,0,0,20"/>
-
-                        <ComboBox x:Name="DialogYearComboBox"
-                     Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                     materialDesign:HintAssist.Hint="选择学年"
-                     Margin="0,0,0,16"/>
-
-                        <ComboBox x:Name="DialogSemesterComboBox"
-                     Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                     materialDesign:HintAssist.Hint="选择学期"
-                     Margin="0,0,0,16">
-                            <ComboBoxItem Content="第一学期"/>
-                            <ComboBoxItem Content="第二学期"/>
-                        </ComboBox>
-
-                        <DatePicker x:Name="StartDatePicker"
-                       Style="{StaticResource MaterialDesignOutlinedDatePicker}"
-                       materialDesign:HintAssist.Hint="开始日期"
-                       Margin="0,0,0,16"/>
-
-                        <DatePicker x:Name="EndDatePicker"
-                       Style="{StaticResource MaterialDesignOutlinedDatePicker}"
-                       materialDesign:HintAssist.Hint="结束日期"
-                       Margin="0,0,0,16"/>
-
-                        <StackPanel Orientation="Horizontal" 
-                      HorizontalAlignment="Right">
-                            <Button Content="取消"
-                        Style="{StaticResource MaterialDesignOutlinedButton}"
-                        Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
-                        Margin="0,0,8,0"/>
-                            <Button Content="保存"
-                        Style="{StaticResource AnimatedButtonStyle}"
-                        Click="SaveSemester_Click"/>
-                        </StackPanel>
-                    </StackPanel>
-                </materialDesign:DialogHost.DialogContent>
-            </materialDesign:DialogHost>
         </TabControl>
+        <!-- 添加/编辑学期对话框模板 -->
+        <materialDesign:DialogHost x:Name="SemesterDialog" Margin="0,10,0,-10">
+            <materialDesign:DialogHost.DialogContent>
+                <StackPanel Margin="16" MinWidth="400">
+                    <TextBlock x:Name="SemesterDialogTitle"
+          Text="添加新学期"
+          FontSize="20"
+          FontWeight="Bold"
+          Margin="0,0,0,20"/>
 
+                    <ComboBox x:Name="DialogYearComboBox"
+         Style="{StaticResource MaterialDesignOutlinedComboBox}"
+         materialDesign:HintAssist.Hint="选择学年"
+         Margin="0,0,0,16"/>
+
+                    <ComboBox Grid.Column="1"
+              x:Name="DialogSemesterComboBox"
+              ItemsSource="{Binding SemesterTypes}"
+              SelectedItem="{Binding SelectedSemesterType}"
+              DisplayMemberPath="Content"
+              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+              materialDesign:HintAssist.Hint="选择学期"
+              Margin="0,0,10,0"/>
+
+                    <DatePicker x:Name="StartDatePicker"
+           Style="{StaticResource MaterialDesignOutlinedDatePicker}"
+           materialDesign:HintAssist.Hint="开始日期"
+           Margin="0,0,0,16"/>
+
+                    <DatePicker x:Name="EndDatePicker"
+           Style="{StaticResource MaterialDesignOutlinedDatePicker}"
+           materialDesign:HintAssist.Hint="结束日期"
+           Margin="0,0,0,16"/>
+
+                    <StackPanel Orientation="Horizontal" 
+          HorizontalAlignment="Right">
+                        <Button Content="取消"
+            Style="{StaticResource MaterialDesignOutlinedButton}"
+            Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
+            Margin="0,0,8,0"/>
+                        <Button Content="保存"
+            Style="{StaticResource AnimatedButtonStyle}"
+            Click="SaveSemester_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </materialDesign:DialogHost.DialogContent>
+        </materialDesign:DialogHost>
         <!-- 加载指示器 -->
         <materialDesign:Card x:Name="LoadingIndicator" 
                            Visibility="Collapsed"
@@ -773,26 +794,69 @@
         <!-- 编辑信息对话框 -->
         <materialDesign:DialogHost x:Name="EditDialog">
             <materialDesign:DialogHost.DialogContent>
-                <StackPanel Margin="16">
-                    <TextBlock Text="编辑信息"
-                             FontSize="20"
-                             FontWeight="Bold"
-                             Margin="0,0,0,20"/>
+                <StackPanel Margin="16" MinWidth="400">
+                    <TextBlock x:Name="DialogTitleBlock"
+                      Text="编辑信息"
+                      FontSize="20"
+                      FontWeight="Bold"
+                      Margin="0,0,0,20"/>
                     <!-- 动态内容将在代码中添加 -->
-                    <StackPanel x:Name="EditDialogContent"/>
+                    <StackPanel x:Name="DialogContentPanel"/>
                     <StackPanel Orientation="Horizontal" 
-                              HorizontalAlignment="Right" 
-                              Margin="0,16,0,0">
+                      HorizontalAlignment="Right" 
+                      Margin="0,16,0,0">
                         <Button Content="取消"
-                                Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
-                                Margin="0,0,8,0"/>
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
+                        Margin="0,0,8,0"/>
                         <Button Content="保存"
-                                Style="{StaticResource AnimatedButtonStyle}"
-                                Command="{Binding SaveEditCommand}"/>
+                        Style="{StaticResource AnimatedButtonStyle}"
+                        Click="SaveDialog_Click"/>
                     </StackPanel>
                 </StackPanel>
             </materialDesign:DialogHost.DialogContent>
         </materialDesign:DialogHost>
+
+        <!-- 学生详情对话框 -->
+        <materialDesign:DialogHost x:Name="StudentDetailsDialog">
+            <materialDesign:DialogHost.DialogContent>
+                <StackPanel Margin="16" MinWidth="500">
+                    <TextBlock Text="学生详细信息"
+                      FontSize="20"
+                      FontWeight="Bold"
+                      Margin="0,0,0,20"/>
+
+                    <Grid x:Name="StudentDetailsGrid" Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- 各行信息将在代码中动态填充 -->
+                    </Grid>
+
+                    <Button Content="关闭"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
+                    HorizontalAlignment="Right"
+                    Margin="0,16,0,0"/>
+                </StackPanel>
+            </materialDesign:DialogHost.DialogContent>
+        </materialDesign:DialogHost>
+        
     </Grid>
 </UserControl>

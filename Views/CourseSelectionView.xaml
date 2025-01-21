@@ -96,7 +96,7 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="BorderBrush" Value="#DDDDDD"/>
             <Setter Property="Background" Value="White"/>
-            <Setter Property="RowHeight" Value="35"/>
+            <Setter Property="RowHeight" Value="50"/>
             <Setter Property="HeadersVisibility" Value="Column"/>
             <!-- 添加以下滚动设置 -->
             <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
@@ -539,7 +539,10 @@
                                                         <DataGridTemplateColumn.CellTemplate>
                                                             <DataTemplate>
                                                                 <Button Style="{StaticResource MaterialDesignIconButton}"
-                                                            Click="AddCourse_Click">
+                                                            Click="AddCourse_Click"
+                                                            Margin="0,0,4,0"
+                                                            Height="35"
+                                                            Width="35">
                                                                     <materialDesign:PackIcon Kind="Plus"/>
                                                                 </Button>
                                                             </DataTemplate>
@@ -595,7 +598,10 @@
                                                         <DataGridTemplateColumn.CellTemplate>
                                                             <DataTemplate>
                                                                 <Button Style="{StaticResource MaterialDesignIconButton}"
-                                                            Click="RemoveCourse_Click">
+                                                            Click="RemoveCourse_Click"
+                                                            Margin="0,0,4,0"
+                                                            Height="35"
+                                                            Width="35">
                                                                     <materialDesign:PackIcon Kind="Minus"/>
                                                                 </Button>
                                                             </DataTemplate>
