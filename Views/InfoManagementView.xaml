@@ -516,14 +516,6 @@ Style="{StaticResource MaterialDesignOutlinedButton}" Grid.ColumnSpan="2"/>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal">
                                                     <Button Style="{StaticResource MaterialDesignIconButton}"
-                        Click="EditClassStudent_Click"
-                        ToolTip="编辑"
-                        Margin="0,0,4,0"
-                        Height="35"
-                        Width="35">
-                                                        <materialDesign:PackIcon Kind="Edit"/>
-                                                    </Button>
-                                                    <Button Style="{StaticResource MaterialDesignIconButton}"
                         Click="DeleteClassStudent_Click"
                         ToolTip="删除"
                         Height="35"
@@ -607,8 +599,7 @@ Style="{StaticResource MaterialDesignOutlinedButton}" Grid.ColumnSpan="2"/>
                                 </StackPanel>
 
                                 <Button DockPanel.Dock="Right"
-                                        Command="{Binding AddSemesterCommand}"
-                            Style="{StaticResource AnimatedButtonStyle}">
+                                        Click="AddSemester_Click">
                                     <StackPanel Orientation="Horizontal">
                                         <materialDesign:PackIcon Kind="Plus" 
                                                    Margin="0,0,8,0"/>
@@ -633,19 +624,9 @@ Style="{StaticResource MaterialDesignOutlinedButton}" Grid.ColumnSpan="2"/>
                              materialDesign:HintAssist.Hint="选择学年"
                              Margin="0,0,10,0"/>
 
-                                <ComboBox Grid.Column="1"
-          x:Name="SemesterTypeComboBox"
-          ItemsSource="{Binding SemesterTypes}"
-          SelectedItem="{Binding SelectedSemesterType}"
-          DisplayMemberPath="Content"
-          Style="{StaticResource MaterialDesignOutlinedComboBox}"
-          materialDesign:HintAssist.Hint="选择学期"
-          Margin="0,0,10,0"/>
-
                                 <Button Grid.Column="2"
                             Content="查询"
-                            Command="{Binding QuerySemesterCommand}"
-                            Style="{StaticResource AnimatedButtonStyle}"
+                            Click="SearchSemester_Click"
                             Width="100"
                             />
                             </Grid>
@@ -658,11 +639,11 @@ Style="{StaticResource MaterialDesignOutlinedButton}" Grid.ColumnSpan="2"/>
                          Style="{StaticResource CommonDataGridStyle}">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="学年" 
-                                          Binding="{Binding YearRange}" 
+                                          Binding="{Binding YearName}" 
                                           Width="120"/>
                                     <DataGridTextColumn Header="学期" 
                                           Binding="{Binding SemesterName}" 
-                                          Width="100"/>
+                                          Width="200"/>
                                     <DataGridTextColumn Header="开始日期" 
                                           Binding="{Binding StartDate, StringFormat=yyyy-MM-dd}" 
                                           Width="120"/>
@@ -701,15 +682,6 @@ Style="{StaticResource MaterialDesignOutlinedButton}" Grid.ColumnSpan="2"/>
                                                         <materialDesign:PackIcon Kind="Edit"/>
                                                     </Button>
                                                     <Button Style="{StaticResource MaterialDesignIconButton}"
-                                                        Command="{Binding SetCurrentSemesterCommand}"
-                                                        CommandParameter="{Binding}"
-                                                ToolTip="设为当前学期"
-                                                            Margin="0,0,4,0"
-                                                            Height="35"
-                                                            Width="35">
-                                                        <materialDesign:PackIcon Kind="Star"/>
-                                                    </Button>
-                                                    <Button Style="{StaticResource MaterialDesignIconButton}"
                                                 Click="DeleteSemester_Click"
                                                 ToolTip="删除"
                                                             Margin="0,0,4,0"
@@ -743,14 +715,10 @@ Style="{StaticResource MaterialDesignOutlinedButton}" Grid.ColumnSpan="2"/>
          materialDesign:HintAssist.Hint="选择学年"
          Margin="0,0,0,16"/>
 
-                    <ComboBox Grid.Column="1"
-              x:Name="DialogSemesterComboBox"
-              ItemsSource="{Binding SemesterTypes}"
-              SelectedItem="{Binding SelectedSemesterType}"
-              DisplayMemberPath="Content"
-              Style="{StaticResource MaterialDesignOutlinedComboBox}"
-              materialDesign:HintAssist.Hint="选择学期"
-              Margin="0,0,10,0"/>
+                    <ComboBox x:Name="DialogSemesterComboBox"
+          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+          materialDesign:HintAssist.Hint="选择学期"
+          Margin="0,0,0,16"/>
 
                     <DatePicker x:Name="StartDatePicker"
            Style="{StaticResource MaterialDesignOutlinedDatePicker}"

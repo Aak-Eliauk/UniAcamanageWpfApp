@@ -28,6 +28,7 @@ namespace UniAcamanageWpfApp.Views
         private string currentEditType;
         private object currentEditItem;
         private int? currentEditingSemesterId;
+        private readonly List<string> semesterTypes = new List<string> { "第一学期", "第二学期" };
 
         public InfoManagementView()
         {
@@ -38,6 +39,19 @@ namespace UniAcamanageWpfApp.Views
             ClearFilters_Click(null, null);
             InitializeSemesterManagement();
         }
+
+        private async Task InitializeSemesterManagement()
+        {
+            // 初始化学年下拉框
+            await LoadAcademicYears();
+
+            // 初始化学期类型下拉框（在对话框中）
+            DialogSemesterComboBox.ItemsSource = new List<string> { "第一学期", "第二学期" };
+
+            // 加载学期数据
+            LoadSemesters();
+        }
+
 
         private void LoadInitialData()
         {
@@ -1065,16 +1079,89 @@ namespace UniAcamanageWpfApp.Views
 
         private void EditSemester_Click(object sender, RoutedEventArgs e)
         {
-            var row = ((Button)sender).DataContext as DataRowView;
-            if (row == null) return;
+            try
+            {
+                var button = sender as Button;
+                var semester = (button.DataContext as DataRowView).Row;
 
-            DialogYearComboBox.SelectedItem = row["AcademicYearID"].ToString();
-            DialogSemesterComboBox.Text = row["SemesterName"].ToString();
-            StartDatePicker.SelectedDate = Convert.ToDateTime(row["StartDate"]);
-            EndDatePicker.SelectedDate = Convert.ToDateTime(row["EndDate"]);
+                currentEditingSemesterId = Convert.ToInt32(semester["SemesterID"]);
 
-            SemesterDialogTitle.Text = "编辑学期";
-            SemesterDialog.IsOpen = true;
+                SemesterDialogTitle.Text = "编辑学期";
+
+                // 设置学年
+                DialogYearComboBox.SelectedValue = Convert.ToInt32(semester["AcademicYearID"]);
+
+                // 从学期名称中提取学期类型
+                string semesterName = semester["SemesterName"].ToString();
+                if (semesterName.EndsWith("第一学期"))
+                {
+                    DialogSemesterComboBox.SelectedItem = "第一学期";
+                }
+                else if (semesterName.EndsWith("第二学期"))
+                {
+                    DialogSemesterComboBox.SelectedItem = "第二学期";
+                }
+
+                // 设置日期
+                StartDatePicker.SelectedDate = Convert.ToDateTime(semester["StartDate"]);
+                EndDatePicker.SelectedDate = Convert.ToDateTime(semester["EndDate"]);
+
+                SemesterDialog.IsOpen = true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"加载编辑数据失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+
+        private async void DeleteSemester_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var button = sender as Button;
+                var semester = (button.DataContext as DataRowView).Row;
+
+                var result = MessageBox.Show(
+                    $"确定要删除 {semester["YearName"]} {semester["SemesterName"]} 吗？",
+                    "确认删除",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    using (var conn = new SqlConnection(connectionString))
+                    {
+                        await conn.OpenAsync();
+
+                        // 检查是否有关联数据
+                        var checkQuery = @"
+                    SELECT COUNT(*) FROM Course WHERE SemesterID = @SemesterID";
+                        var checkCmd = new SqlCommand(checkQuery, conn);
+                        checkCmd.Parameters.AddWithValue("@SemesterID", semester["SemesterID"]);
+                        var count = (int)await checkCmd.ExecuteScalarAsync();
+
+                        if (count > 0)
+                        {
+                            MessageBox.Show("该学期下存在课程数据，无法删除！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                            return;
+                        }
+
+                        var cmd = new SqlCommand(
+                            "DELETE FROM Semester WHERE SemesterID = @SemesterID",
+                            conn);
+                        cmd.Parameters.AddWithValue("@SemesterID", semester["SemesterID"]);
+                        await cmd.ExecuteNonQueryAsync();
+
+                        LoadSemesters();
+                        MessageBox.Show("删除成功！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"删除失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void LoadTeachers()
@@ -1137,18 +1224,6 @@ namespace UniAcamanageWpfApp.Views
             }
         }
 
-        private void LoadSemesters()
-        {
-            using (var conn = new SqlConnection(connectionString))
-            {
-                var cmd = new SqlCommand("SELECT * FROM Semester", conn);
-                var adapter = new SqlDataAdapter(cmd);
-                semestersTable.Clear();
-                adapter.Fill(semestersTable);
-                SemesterDataGrid.ItemsSource = semestersTable.DefaultView;
-            }
-        }
-
         private void InitializeYearAndSemesterTypes()
         {
             var currentYear = DateTime.Now.Year;
@@ -1158,9 +1233,6 @@ namespace UniAcamanageWpfApp.Views
                 years.Add((currentYear - i).ToString());
             }
             YearComboBox.ItemsSource = years;
-
-            var semesterTypes = new List<string> { "第一学期", "第二学期" };
-            SemesterTypeComboBox.ItemsSource = semesterTypes;
         }
 
         // 添加一个方法来更新搜索结果数量
@@ -1309,71 +1381,28 @@ namespace UniAcamanageWpfApp.Views
 
         private void AddSemester_Click(object sender, RoutedEventArgs e)
         {
-            SemesterDialog.IsOpen = true;
-        }
-
-        private void SaveSemester_Click(object sender, RoutedEventArgs e)
-        {
             try
             {
-                using (var conn = new SqlConnection(connectionString))
-                {
-                    conn.Open();
-                    var cmd = new SqlCommand(@"
-                INSERT INTO Semester (SemesterName, AcademicYearID, StartDate, EndDate)
-                VALUES (@SemesterName, @AcademicYearID, @StartDate, @EndDate)", conn);
+                currentEditingSemesterId = null;
+                SemesterDialogTitle.Text = "添加新学期";
 
-                    cmd.Parameters.AddWithValue("@SemesterName", DialogSemesterComboBox.Text);
-                    cmd.Parameters.AddWithValue("@AcademicYearID",
-                        int.Parse(DialogYearComboBox.SelectedItem.ToString()));
-                    cmd.Parameters.AddWithValue("@StartDate", StartDatePicker.SelectedDate);
-                    cmd.Parameters.AddWithValue("@EndDate", EndDatePicker.SelectedDate);
+                // 清空所有选择
+                DialogYearComboBox.SelectedItem = null;
+                DialogSemesterComboBox.SelectedItem = null;
+                StartDatePicker.SelectedDate = null;
+                EndDatePicker.SelectedDate = null;
 
-                    cmd.ExecuteNonQuery();
-                }
+                // 设置学期选项
+                DialogSemesterComboBox.ItemsSource = new List<string> { "第一学期", "第二学期" };
 
-                MessageBox.Show("添加成功！");
-                SemesterDialog.IsOpen = false;
-                LoadSemesters();
+                SemesterDialog.IsOpen = true;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"添加失败：{ex.Message}");
+                MessageBox.Show($"打开添加对话框失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        private void DeleteSemester_Click(object sender, RoutedEventArgs e)
-        {
-            var row = ((Button)sender).DataContext as DataRowView;
-            if (row == null) return;
-
-            var result = MessageBox.Show(
-                $"确定要删除学期 {row["SemesterName"]} 吗？",
-                "确认删除",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-
-            if (result == MessageBoxResult.Yes)
-            {
-                try
-                {
-                    using (var conn = new SqlConnection(connectionString))
-                    {
-                        conn.Open();
-                        var cmd = new SqlCommand(
-                            "DELETE FROM Semester WHERE SemesterID = @SemesterID", conn);
-                        cmd.Parameters.AddWithValue("@SemesterID", row["SemesterID"]);
-                        cmd.ExecuteNonQuery();
-                    }
-                    LoadSemesters();
-                    MessageBox.Show("删除成功！");
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"删除失败：{ex.Message}");
-                }
-            }
-        }
 
         // 添加学生按钮点击事件
         private void AddStudent_Click(object sender, RoutedEventArgs e)
@@ -1652,178 +1681,6 @@ namespace UniAcamanageWpfApp.Views
             catch (Exception ex)
             {
                 MessageBox.Show($"查询失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private async void EditClassStudent_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var button = sender as Button;
-                var student = button.DataContext as DataRowView;
-                if (student == null) return;
-
-                var dialog = new Window
-                {
-                    Title = "编辑学生信息",
-                    Width = 500,
-                    Height = 650,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    Owner = Window.GetWindow(this),
-                    Style = FindResource("MaterialDesignWindow") as Style,
-                    ResizeMode = ResizeMode.NoResize
-                };
-
-                var scrollViewer = new ScrollViewer
-                {
-                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    Margin = new Thickness(0, 0, 0, 10)
-                };
-
-                var panel = new StackPanel { Margin = new Thickness(16) };
-
-                // 学号（只读）
-                var studentIdBox = CreateTextBox(student["StudentID"].ToString(), "学号", true);
-
-                // 姓名
-                var nameBox = CreateTextBox(student["Name"].ToString(), "姓名");
-                MaterialDesignThemes.Wpf.HintAssist.SetHelperText(nameBox, "必填项");
-
-                // 性别
-                var genderBox = new ComboBox
-                {
-                    Style = FindResource("MaterialDesignOutlinedComboBox") as Style,
-                    Margin = new Thickness(0, 0, 0, 16),
-                    ItemsSource = new[] { "男", "女" },
-                    SelectedItem = student["Gender"].ToString()
-                };
-                MaterialDesignThemes.Wpf.HintAssist.SetHint(genderBox, "性别");
-
-                // 出生日期
-                var birthDatePicker = new DatePicker
-                {
-                    Style = FindResource("MaterialDesignOutlinedDatePicker") as Style,
-                    Margin = new Thickness(0, 0, 0, 16),
-                    Language = System.Windows.Markup.XmlLanguage.GetLanguage("zh-CN")
-                };
-                if (student["BirthDate"] != DBNull.Value)
-                {
-                    birthDatePicker.SelectedDate = Convert.ToDateTime(student["BirthDate"]);
-                }
-                MaterialDesignThemes.Wpf.HintAssist.SetHint(birthDatePicker, "出生日期");
-
-                // 专业
-                var majorBox = CreateTextBox(student["Major"].ToString(), "专业");
-
-                // 入学年份
-                var yearBox = CreateTextBox(student["YearOfAdmission"].ToString(), "入学年份");
-
-                // 班级选择
-                var classBox = new ComboBox
-                {
-                    Style = FindResource("MaterialDesignOutlinedComboBox") as Style,
-                    Margin = new Thickness(0, 0, 0, 16)
-                };
-                MaterialDesignThemes.Wpf.HintAssist.SetHint(classBox, "班级");
-
-                // 异步加载班级数据
-                await LoadClassesForComboBoxAsync(classBox);
-                classBox.SelectedValue = student["ClassID"].ToString();
-
-                // 电话
-                var phoneBox = CreateTextBox(
-                    student["Phone"] != DBNull.Value ? student["Phone"].ToString() : "",
-                    "电话");
-
-                // 电子邮件
-                var emailBox = CreateTextBox(
-                    student["Email"] != DBNull.Value ? student["Email"].ToString() : "",
-                    "电子邮件");
-
-                // 地址
-                var addressBox = CreateMultiLineTextBox(
-                    student["Address"] != DBNull.Value ? student["Address"].ToString() : "",
-                    "地址");
-
-                // 按钮面板
-                var buttonPanel = new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    Margin = new Thickness(0, 16, 0, 0)
-                };
-
-                // 取消按钮
-                var cancelButton = new Button
-                {
-                    Content = "取消",
-                    Style = FindResource("MaterialDesignOutlinedButton") as Style,
-                    Margin = new Thickness(0, 0, 16, 0)
-                };
-                cancelButton.Click += (s, args) => dialog.Close();
-
-                // 保存按钮
-                var saveButton = new Button
-                {
-                    Content = "保存",
-                    Style = FindResource("MaterialDesignRaisedButton") as Style
-                };
-
-                saveButton.Click += async (s, args) =>
-                {
-                    try
-                    {
-                        if (!ValidateInput(nameBox, genderBox, birthDatePicker, majorBox, classBox, yearBox, out int yearValue))
-                        {
-                            return;
-                        }
-
-                        if (!ValidateContactInfo(phoneBox, emailBox))
-                        {
-                            return;
-                        }
-
-                        await UpdateStudentAsync(
-                            studentIdBox.Text,
-                            nameBox.Text.Trim(),
-                            genderBox.SelectedItem.ToString(),
-                            birthDatePicker.SelectedDate.Value,
-                            majorBox.Text.Trim(),
-                            classBox.SelectedValue.ToString(),
-                            yearValue,
-                            phoneBox.Text.Trim(),
-                            emailBox.Text.Trim(),
-                            addressBox.Text.Trim()
-                        );
-
-                        MessageBox.Show("保存成功！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                        dialog.Close();
-                        await RefreshDataGridAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"保存失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
-                };
-
-                // 添加所有控件到面板
-                AddControlsToPanel(panel, new UIElement[]
-                {
-            studentIdBox, nameBox, genderBox, birthDatePicker, majorBox,
-            classBox, yearBox, phoneBox, emailBox, addressBox
-                });
-
-                buttonPanel.Children.Add(cancelButton);
-                buttonPanel.Children.Add(saveButton);
-                panel.Children.Add(buttonPanel);
-
-                scrollViewer.Content = panel;
-                dialog.Content = scrollViewer;
-                dialog.ShowDialog();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"编辑失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -2249,6 +2106,234 @@ namespace UniAcamanageWpfApp.Views
                 }
             }
         }
+
+        private void LoadSemesters()
+        {
+            try
+            {
+                using (var conn = new SqlConnection(connectionString))
+                {
+                    var query = @"
+                    SELECT 
+                        s.SemesterID, 
+                        s.SemesterName,
+                        s.AcademicYearID,
+                        CONCAT(DATEPART(YEAR, ay.StartDate), '-', DATEPART(YEAR, ay.EndDate)) as YearName,
+                        s.StartDate, 
+                        s.EndDate,
+                        CASE 
+                            WHEN GETDATE() BETWEEN s.StartDate AND s.EndDate THEN '进行中'
+                            WHEN GETDATE() < s.StartDate THEN '未开始'
+                            ELSE '已结束'
+                        END AS Status
+                    FROM Semester s
+                    INNER JOIN AcademicYear ay ON s.AcademicYearID = ay.AcademicYearID
+                    WHERE 1=1";
+
+                    if (YearRangeComboBox.SelectedValue != null)
+                    {
+                        query += " AND s.AcademicYearID = @AcademicYearID";
+                    }
+
+                    query += " ORDER BY s.StartDate DESC";
+
+                    var cmd = new SqlCommand(query, conn);
+
+                    if (YearRangeComboBox.SelectedValue != null)
+                    {
+                        cmd.Parameters.AddWithValue("@AcademicYearID", YearRangeComboBox.SelectedValue);
+                    }
+
+                    var adapter = new SqlDataAdapter(cmd);
+                    semestersTable.Clear();
+                    adapter.Fill(semestersTable);
+                    SemesterDataGrid.ItemsSource = semestersTable.DefaultView;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"加载学期数据失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+
+
+        private void SaveSemester_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (DialogYearComboBox.SelectedValue == null ||
+                    DialogSemesterComboBox.SelectedItem == null ||
+                    StartDatePicker.SelectedDate == null ||
+                    EndDatePicker.SelectedDate == null)
+                {
+                    MessageBox.Show("请填写所有必填字段！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                using (var conn = new SqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // 获取学年信息
+                    var selectedYearRow = (DialogYearComboBox.SelectedItem as DataRowView).Row;
+                    string yearName = selectedYearRow["YearName"].ToString();
+                    string selectedSemester = DialogSemesterComboBox.SelectedItem.ToString();
+
+                    // 构造完整的学期名称 (例如: "2024-2025第一学期")
+                    string fullSemesterName = $"{yearName}{selectedSemester}";
+
+                    // 检查重复
+                    var checkQuery = @"
+                    SELECT COUNT(*) FROM Semester 
+                    WHERE AcademicYearID = @AcademicYearID 
+                    AND SemesterName = @SemesterName
+                    AND (@SemesterID IS NULL OR SemesterID != @SemesterID)";
+
+                    var checkCmd = new SqlCommand(checkQuery, conn);
+                    checkCmd.Parameters.AddWithValue("@AcademicYearID", DialogYearComboBox.SelectedValue);
+                    checkCmd.Parameters.AddWithValue("@SemesterName", fullSemesterName);
+                    checkCmd.Parameters.AddWithValue("@SemesterID", (object)currentEditingSemesterId ?? DBNull.Value);
+
+                    var count = (int)checkCmd.ExecuteScalar();
+                    if (count > 0)
+                    {
+                        MessageBox.Show("该学年已存在相同的学期！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    // 保存数据
+                    string query = currentEditingSemesterId == null
+                        ? "INSERT INTO Semester (SemesterName, AcademicYearID, StartDate, EndDate) VALUES (@SemesterName, @AcademicYearID, @StartDate, @EndDate)"
+                        : "UPDATE Semester SET SemesterName = @SemesterName, AcademicYearID = @AcademicYearID, StartDate = @StartDate, EndDate = @EndDate WHERE SemesterID = @SemesterID";
+
+                    var cmd = new SqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@SemesterName", fullSemesterName);
+                    cmd.Parameters.AddWithValue("@AcademicYearID", DialogYearComboBox.SelectedValue);
+                    cmd.Parameters.AddWithValue("@StartDate", StartDatePicker.SelectedDate.Value);
+                    cmd.Parameters.AddWithValue("@EndDate", EndDatePicker.SelectedDate.Value);
+
+                    if (currentEditingSemesterId != null)
+                    {
+                        cmd.Parameters.AddWithValue("@SemesterID", currentEditingSemesterId.Value);
+                    }
+
+                    cmd.ExecuteNonQuery();
+
+                    LoadSemesters();
+                    SemesterDialog.IsOpen = false;
+                    MessageBox.Show(
+                        currentEditingSemesterId == null ? "添加成功！" : "更新成功！",
+                        "提示",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"保存失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // 获取学年下的学期数量
+        private int GetSemesterCount(SqlConnection conn, int academicYearId)
+        {
+            var cmd = new SqlCommand("SELECT COUNT(*) FROM Semester WHERE AcademicYearID = @AcademicYearID", conn);
+            cmd.Parameters.AddWithValue("@AcademicYearID", academicYearId);
+            return (int)cmd.ExecuteScalar();
+        }
+
+
+        private void SearchSemester_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                using (var conn = new SqlConnection(connectionString))
+                {
+                    var query = @"
+                SELECT 
+                    s.SemesterID, 
+                    s.SemesterName,
+                    s.AcademicYearID,
+                    ay.YearName,  -- 添加学年名称
+                    s.StartDate, 
+                    s.EndDate,
+                    CASE 
+                        WHEN GETDATE() BETWEEN s.StartDate AND s.EndDate THEN '进行中'
+                        WHEN GETDATE() < s.StartDate THEN '未开始'
+                        ELSE '已结束'
+                    END AS Status
+                FROM Semester s
+                LEFT JOIN (
+                    SELECT 
+                        AcademicYearID,
+                        CONCAT(DATEPART(YEAR, StartDate), '-', DATEPART(YEAR, EndDate)) as YearName
+                    FROM AcademicYear
+                ) ay ON s.AcademicYearID = ay.AcademicYearID
+                WHERE 1=1";
+
+                    if (YearRangeComboBox.SelectedValue != null)
+                    {
+                        query += " AND s.AcademicYearID = @AcademicYearID";
+                    }
+
+                    query += " ORDER BY s.StartDate DESC";
+
+                    var cmd = new SqlCommand(query, conn);
+
+                    if (YearRangeComboBox.SelectedValue != null)
+                    {
+                        cmd.Parameters.AddWithValue("@AcademicYearID", YearRangeComboBox.SelectedValue);
+                    }
+
+                    var adapter = new SqlDataAdapter(cmd);
+                    semestersTable.Clear();
+                    adapter.Fill(semestersTable);
+                    SemesterDataGrid.ItemsSource = semestersTable.DefaultView;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"查询失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async Task LoadAcademicYears()
+        {
+            try
+            {
+                using (var conn = new SqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+                    var query = @"
+                    SELECT 
+                        ay.AcademicYearID, 
+                        CONCAT(DATEPART(YEAR, ay.StartDate), '-', DATEPART(YEAR, ay.EndDate)) as YearName,
+                        ay.StartDate, 
+                        ay.EndDate 
+                    FROM AcademicYear ay 
+                    ORDER BY ay.StartDate DESC";
+
+                    var cmd = new SqlCommand(query, conn);
+                    var adapter = new SqlDataAdapter(cmd);
+                    var dt = new DataTable();
+                    await Task.Run(() => adapter.Fill(dt));
+
+                    YearRangeComboBox.ItemsSource = dt.DefaultView;
+                    YearRangeComboBox.DisplayMemberPath = "YearName";
+                    YearRangeComboBox.SelectedValuePath = "AcademicYearID";
+
+                    DialogYearComboBox.ItemsSource = dt.DefaultView;
+                    DialogYearComboBox.DisplayMemberPath = "YearName";
+                    DialogYearComboBox.SelectedValuePath = "AcademicYearID";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"加载学年数据失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
 
     }
 }
