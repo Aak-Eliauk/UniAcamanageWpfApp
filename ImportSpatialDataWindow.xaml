@@ -1,0 +1,40 @@
+﻿<Window x:Class="UniAcamanageWpfApp.ImportSpatialDataWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="导入空间数据" Height="600" Width="800">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0" Margin="0,5">
+            <Button Content="选择Shapefile" Click="BtnSelectFile_Click" 
+                    DockPanel.Dock="Right" Margin="5,0,0,0"/>
+            <TextBox x:Name="txtFilePath" IsReadOnly="True"/>
+        </DockPanel>
+
+        <StackPanel Grid.Row="1" Margin="0,5">
+            <TextBlock x:Name="txtStatus" Margin="0,5"/>
+            <TextBlock x:Name="txtMatchedCount" Margin="0,5"/>
+            <TextBlock x:Name="txtUnmatchedCount" Margin="0,5"/>
+            <Button Content="开始导入" Click="BtnImport_Click" 
+                    Margin="0,5" HorizontalAlignment="Left" Width="100"/>
+        </StackPanel>
+
+        <!-- 添加日志显示区域 -->
+        <GroupBox Grid.Row="2" Header="进度" Margin="0,5">
+            <ProgressBar x:Name="progressBar" Height="20" Margin="5"/>
+        </GroupBox>
+
+        <GroupBox Grid.Row="3" Header="导入日志" Margin="0,5">
+            <ScrollViewer>
+                <TextBox x:Name="txtLog" IsReadOnly="True" 
+                         TextWrapping="Wrap" 
+                         VerticalScrollBarVisibility="Auto"/>
+            </ScrollViewer>
+        </GroupBox>
+    </Grid>
+</Window>

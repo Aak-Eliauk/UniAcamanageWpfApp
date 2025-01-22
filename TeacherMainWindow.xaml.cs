@@ -148,6 +148,8 @@ namespace UniAcamanageWpfApp
                         MainContentPresenter.Content = new GradeManagementView();
                         break;
                     default:
+                        var importWindow = new ImportSpatialDataWindow();
+                        importWindow.ShowDialog();
                         MainContentPresenter.Content = new TextBlock
                         {
                             Text = $"[{btn.Name}] - 占位内容",
