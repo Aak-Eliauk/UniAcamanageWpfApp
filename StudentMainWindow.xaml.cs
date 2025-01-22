@@ -7,6 +7,7 @@ using UniAcamanageWpfApp.Models;
 using UniAcamanageWpfApp.Views;
 using Microsoft.Data.SqlClient;
 using System.Configuration;
+using UniAcamanageWpfApp.Controls;
 
 namespace UniAcamanageWpfApp
 {
@@ -146,6 +147,9 @@ namespace UniAcamanageWpfApp
                         break;
                     case "BtnAcademic":
                         MainContentPresenter.Content = new AcademicStatusView(_studentID);
+                        break;
+                    case "BtnMap":
+                        MainContentPresenter.Content = new CampusMapControl();
                         break;
                     // 其余的按钮
                     default:

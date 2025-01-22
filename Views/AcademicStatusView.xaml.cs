@@ -16,6 +16,8 @@ using System.Collections.ObjectModel;
 // 添加以下别名定义
 using ComboBox = System.Windows.Controls.ComboBox;
 using TextBox = System.Windows.Controls.TextBox;
+using System.Diagnostics;
+using System.Net.Http;
 
 
 namespace UniAcamanageWpfApp.Views
@@ -349,7 +351,7 @@ namespace UniAcamanageWpfApp.Views
         #region Private Helper Methods
 
         private void PerformSearch(string searchText)
-        {
+                {
             if (string.IsNullOrWhiteSpace(searchText))
             {
                 // 重置筛选
