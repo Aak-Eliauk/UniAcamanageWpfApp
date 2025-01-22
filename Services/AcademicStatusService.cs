@@ -239,7 +239,6 @@ namespace UniAcamanageWpfApp.Services
                 BaseGradePoint = g.BaseGradePoint,
                 WeightedGradePoint = g.WeightedGradePoint,
                 CourseStatus = GetCourseStatus(g.Score),
-                Remarks = g.Remarks,
                 IsRetake = g.IsRetake,
                 ModifiedAt = g.ModifiedAt,
                 ModifiedBy = g.ModifiedBy,

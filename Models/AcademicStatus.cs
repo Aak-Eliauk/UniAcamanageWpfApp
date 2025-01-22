@@ -14,7 +14,6 @@ namespace UniAcamanageWpfApp.Models
         public decimal BaseGradePoint { get; set; }
         public decimal WeightedGradePoint { get; set; }
         public string CourseStatus { get; set; }
-        public string Remarks { get; set; }
         public bool IsRetake { get; set; }
         public DateTime? ModifiedAt { get; set; }
         public string ModifiedBy { get; set; }

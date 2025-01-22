@@ -1,0 +1,182 @@
+﻿<Window x:Class="UniAcamanageWpfApp.Windows.BatchGradeEntryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        mc:Ignorable="d"
+        Title="批量成绩录入" 
+        Height="700" 
+        Width="1200"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource MaterialDesignPaper}">
+
+    <materialDesign:Card Margin="16" 
+                        UniformCornerRadius="15"
+                        Background="White"
+                        materialDesign:ElevationAssist.Elevation="Dp1">
+        <DockPanel Margin="20">
+            <!-- 顶部标题 -->
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,20">
+                <TextBlock Text="批量成绩录入"
+                         FontSize="24"
+                         FontWeight="Bold"
+                         Foreground="#333333"/>
+                <TextBlock Text="请选择课程并录入学生成绩"
+                         FontSize="14"
+                         Foreground="#666666"
+                         Margin="0,5,0,0"/>
+            </StackPanel>
+
+            <!-- 功能区域 -->
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- 课程选择 -->
+                <ComboBox Grid.Column="0"
+                         x:Name="CourseComboBox"
+                         Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                         materialDesign:HintAssist.Hint="选择课程"
+                         Height="56"
+                         Margin="0,0,10,0"
+                         DisplayMemberPath="DisplayName"
+                         SelectedValuePath="CourseID"
+                         SelectionChanged="CourseComboBox_SelectionChanged"/>
+
+                <!-- Excel导入按钮 -->
+                <Button Grid.Column="1"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Margin="0,0,10,0"
+                        Click="ImportFromExcel_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="FileImport" 
+                                               Margin="0,0,8,0"/>
+                        <TextBlock Text="从Excel导入"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Excel导出按钮 -->
+                <Button Grid.Column="2"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Margin="0,0,10,0"
+                        Click="ExportToExcel_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="FileExport" 
+                                               Margin="0,0,8,0"/>
+                        <TextBlock Text="导出到Excel"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- 模板下载按钮 -->
+                <Button Grid.Column="3"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Click="DownloadTemplate_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Download" 
+                                               Margin="0,0,8,0"/>
+                        <TextBlock Text="下载Excel模板"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- 底部操作按钮 -->
+            <StackPanel DockPanel.Dock="Bottom" 
+                       Orientation="Horizontal" 
+                       HorizontalAlignment="Right"
+                       Margin="0,20,0,0">
+                <TextBlock x:Name="ValidationMessageText"
+                          Foreground="#F44336"
+                          VerticalAlignment="Center"
+                          Margin="0,0,20,0"/>
+                <Button Content="取消"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Margin="0,0,8,0"
+                        Click="CancelButton_Click"/>
+                <Button Content="保存"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Background="{DynamicResource PrimaryHueDarkBrush}"
+                        Click="SaveButton_Click"/>
+            </StackPanel>
+
+            <!-- 搜索和筛选区域 -->
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBox Grid.Column="0"
+                         x:Name="SearchBox"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="输入学号或姓名搜索..."
+                         materialDesign:TextFieldAssist.HasClearButton="True"
+                         TextChanged="SearchBox_TextChanged"
+                         Margin="0,0,10,0"/>
+
+                <StackPanel Grid.Column="1" 
+                          Orientation="Horizontal">
+                    <TextBlock Text="仅显示未录入："
+                             VerticalAlignment="Center"
+                             Margin="0,0,8,0"/>
+                    <CheckBox x:Name="ShowUngraded"
+                            Checked="ShowUngraded_CheckedChanged"
+                            Unchecked="ShowUngraded_CheckedChanged"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- 数据表格 -->
+            <DataGrid x:Name="StudentGradeGrid"
+         AutoGenerateColumns="False"
+         CanUserAddRows="False"
+         IsReadOnly="False"
+         SelectionMode="Single"
+         SelectionUnit="Cell"
+         CellEditEnding="StudentGradeGrid_CellEditEnding">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="学号" 
+                          Binding="{Binding StudentID}"
+                          IsReadOnly="True"
+                          Width="100"/>
+                    <DataGridTextColumn Header="姓名" 
+                          Binding="{Binding StudentName}"
+                          IsReadOnly="True"
+                          Width="100"/>
+                    <DataGridTextColumn Header="班级" 
+                          Binding="{Binding ClassID}"
+                          IsReadOnly="True"
+                          Width="120"/>
+                    <DataGridTextColumn Header="原有成绩" 
+                          Binding="{Binding ExistingScore, StringFormat={}{0:N1}}"
+                          IsReadOnly="True"
+                          Width="100"/>
+                    <DataGridTextColumn Header="补考记录" 
+                          Binding="{Binding ExistingIsRetest}"
+                          IsReadOnly="True"
+                          Width="80"/>
+                    <DataGridTextColumn Header="新成绩" 
+                          Binding="{Binding NewScore}"
+                          Width="100"/>
+                    <DataGridTemplateColumn Header="补考" 
+                              Width="60">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsRetest, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignCheckBox}"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="备注" 
+                          Binding="{Binding Remarks}"
+                          Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+    </materialDesign:Card>
+</Window>

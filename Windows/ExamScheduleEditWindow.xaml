@@ -1,0 +1,77 @@
+﻿<Window x:Class="UniAcamanageWpfApp.Windows.ExamScheduleEditWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="考试安排编辑" Height="600" Width="800"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 头部筛选区 -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="200"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="学期：" VerticalAlignment="Center" Grid.Column="0" Grid.Row="0" Margin="0,0,10,0"/>
+                <ComboBox x:Name="SemesterComboBox" Grid.Column="1" Grid.Row="0" Margin="0,5"
+                         SelectionChanged="SemesterComboBox_SelectionChanged"/>
+
+                <TextBlock Text="课程：" VerticalAlignment="Center" Grid.Column="2" Grid.Row="0" Margin="20,0,10,0"/>
+                <ComboBox x:Name="CourseComboBox" Grid.Column="3" Grid.Row="0" Margin="0,5"
+                         SelectionChanged="CourseComboBox_SelectionChanged"/>
+
+                <Button x:Name="RefreshButton" Content="刷新" Grid.Column="3" Grid.Row="1" 
+                        HorizontalAlignment="Right" Margin="0,5" Click="RefreshButton_Click"/>
+            </Grid>
+        </StackPanel>
+
+        <!-- 数据表格 -->
+        <DataGrid x:Name="ExamScheduleGrid" AutoGenerateColumns="False" Margin="10,21,10,199" Grid.Row="1">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="考试ID" Binding="{Binding ExamID}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="批次号" Binding="{Binding BatchNumber}"/>
+                <DataGridTextColumn Header="考试地点" Binding="{Binding ExamLocation}"/>
+                <DataGridComboBoxColumn x:Name="ExamTypeColumn" Header="考试类型" 
+                               SelectedValueBinding="{Binding ExamType}"
+                               SelectedValuePath="Name"
+                               DisplayMemberPath="Name"/>
+                <DataGridComboBoxColumn x:Name="InvigilatorColumn" Header="监考教师" 
+                               SelectedValueBinding="{Binding InvigilatorID}"
+                               SelectedValuePath="TeacherID"
+                               DisplayMemberPath="Name"/>
+                <DataGridTextColumn Header="班级" Binding="{Binding ClassID}"/>
+                <DataGridTextColumn Header="时长(分钟)" Binding="{Binding Duration}"/>
+                <DataGridTemplateColumn Header="考试时间">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <DatePicker SelectedDate="{Binding ExamDate, UpdateSourceTrigger=PropertyChanged}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- 底部按钮 -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button x:Name="SaveButton" Content="保存" Style="{StaticResource MaterialDesignRaisedButton}" 
+                    Width="100" Margin="0,0,10,0" Click="SaveButton_Click"/>
+            <Button x:Name="CancelButton" Content="取消" Style="{StaticResource MaterialDesignRaisedButton}" 
+                    Width="100" Click="CancelButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

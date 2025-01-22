@@ -50,18 +50,21 @@ namespace UniAcamanageWpfApp.Windows
                 {
                     conn.Open();
                     var cmd = new SqlCommand(@"
-                        SELECT 
-                            c.CourseID,
-                            c.CourseCode + ' - ' + c.CourseName AS CourseDisplay,
-                            c.CourseName,
-                            c.CourseCode,
-                            c.CourseType,
-                            c.Credit,
-                            c.ScheduleTime,
-                            c.Capacity,
-                            (SELECT COUNT(*) FROM StudentCourse WHERE CourseID = c.CourseID AND SelectionType IN ('已通过', '已确认')) AS EnrolledCount
-                        FROM Course c
-                        WHERE c.SemesterID = @SemesterID", conn);
+                SELECT 
+                    c.CourseID,
+                    c.CourseCode + ' - ' + c.CourseName AS CourseDisplay,
+                    c.CourseName,
+                    c.CourseCode,
+                    c.CourseType,
+                    c.Credit,
+                    c.ScheduleTime,
+                    c.Capacity,
+                    (SELECT COUNT(*) 
+                     FROM StudentCourse 
+                     WHERE CourseID = c.CourseID 
+                     AND SelectionType = '已确认') AS EnrolledCount
+                FROM Course c
+                WHERE c.SemesterID = @SemesterID", conn);
 
                     cmd.Parameters.AddWithValue("@SemesterID", semesterId);
 
@@ -140,34 +143,19 @@ namespace UniAcamanageWpfApp.Windows
                     {
                         try
                         {
-                            // 检查是否已选过这门课
-                            var checkCmd = new SqlCommand(@"
-                                SELECT COUNT(*) FROM StudentCourse 
-                                WHERE StudentID = @StudentID AND CourseID = @CourseID",
-                                conn, transaction);
-
-                            checkCmd.Parameters.AddWithValue("@StudentID", StudentIDTextBox.Text);
-                            checkCmd.Parameters.AddWithValue("@CourseID", CourseComboBox.SelectedValue);
-
-                            int existingCount = (int)checkCmd.ExecuteScalar();
-                            if (existingCount > 0)
-                            {
-                                MessageBox.Show("该学生已经选过这门课程");
-                                return;
-                            }
-
-                            // 添加选课记录
+                            // 添加选课记录，直接设置为已确认状态
                             var cmd = new SqlCommand(@"
-                                INSERT INTO StudentCourse (
-                                    StudentID, CourseID, SelectionType, SelectionDate, Remarks
-                                ) VALUES (
-                                    @StudentID, @CourseID, '已确认', @SelectionDate, @Remarks
-                                )", conn, transaction);
+                        INSERT INTO StudentCourse (
+                            StudentID, CourseID, SelectionType, SelectionDate, Remarks
+                        ) VALUES (
+                            @StudentID, @CourseID, '已确认', @SelectionDate, @Remarks
+                        )", conn, transaction);
 
                             cmd.Parameters.AddWithValue("@StudentID", StudentIDTextBox.Text);
                             cmd.Parameters.AddWithValue("@CourseID", CourseComboBox.SelectedValue);
                             cmd.Parameters.AddWithValue("@SelectionDate", DateTime.Now);
-                            cmd.Parameters.AddWithValue("@Remarks", RemarksTextBox.Text ?? (object)DBNull.Value);
+                            cmd.Parameters.AddWithValue("@Remarks",
+                                string.IsNullOrWhiteSpace(RemarksTextBox.Text) ? DBNull.Value : (object)RemarksTextBox.Text);
 
                             cmd.ExecuteNonQuery();
                             transaction.Commit();
@@ -176,10 +164,23 @@ namespace UniAcamanageWpfApp.Windows
                             MessageBox.Show("选课成功！");
                             Close();
                         }
-                        catch (Exception)
+                        catch (SqlException ex)
                         {
                             transaction.Rollback();
-                            throw;
+                            // 唯一键约束违反，说明已经选过这门课
+                            if (ex.Number == 2627 || ex.Number == 2601)
+                            {
+                                MessageBox.Show("该学生已经选过这门课程");
+                            }
+                            else
+                            {
+                                MessageBox.Show($"选课失败: {ex.Message}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            transaction.Rollback();
+                            MessageBox.Show($"选课失败: {ex.Message}");
                         }
                     }
                 }

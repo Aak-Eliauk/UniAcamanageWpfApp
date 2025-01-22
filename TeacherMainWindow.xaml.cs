@@ -145,13 +145,7 @@ namespace UniAcamanageWpfApp
                         break;
                     case "BtnGradeManage":
                         // 切换到 GradeManagementView
-                        MainContentPresenter.Content = new TextBlock
-                        {
-                            Text = $"[{btn.Name}] - 占位内容",
-                            FontSize = 24,
-                            HorizontalAlignment = HorizontalAlignment.Center,
-                            VerticalAlignment = VerticalAlignment.Center
-                        };
+                        MainContentPresenter.Content = new GradeManagementView();
                         break;
                     default:
                         MainContentPresenter.Content = new TextBlock

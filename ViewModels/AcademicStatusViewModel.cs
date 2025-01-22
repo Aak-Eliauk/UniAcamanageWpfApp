@@ -766,7 +766,6 @@ private async Task LoadGradesAsync()
                         worksheet.Cell(row, 8).Value = grade.BaseGradePoint;
                         worksheet.Cell(row, 9).Value = grade.WeightedGradePoint;
                         worksheet.Cell(row, 10).Value = grade.CourseStatus;
-                        worksheet.Cell(row, 11).Value = grade.Remarks;
                         row++;
                     }
 
