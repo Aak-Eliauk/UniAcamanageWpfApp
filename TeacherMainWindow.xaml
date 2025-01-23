@@ -5,6 +5,8 @@
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:materialDesignAssist="http://materialdesigninxaml.net/winfx/xaml/shared"
         xmlns:Views="clr-namespace:UniAcamanageWpfApp.Views"
+        xmlns:local="clr-namespace:UniAcamanageWpfApp"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         Title="AcademiGo - 教师主页面"
         Icon="Resources/Images/logo.ico"
         Width="1300"
@@ -358,6 +360,23 @@
                                                          Margin="0,0,8,0" Foreground="#FFE74C3C"/>
                                 <TextBlock Text="教课通"
                                            Style="{StaticResource SideNavTextStyle}" Foreground="#FFE74C3C"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- ===== 管理员按钮：管理空间数据 仅当角色为 Admin 时显示 ===== -->
+                        <Button x:Name="BtnSpatialDataManage"
+        Style="{StaticResource SideNavLargeButtonStyle}"
+        Click="NavButton_Click"
+        Visibility="{Binding AdminButtonVisibility, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}">
+                            <StackPanel Style="{StaticResource SideNavStackPanelStyle}">
+                                <materialDesign:PackIcon Style="{StaticResource SideNavPackIconStyle}"
+                                Kind="DatabaseSettings"
+                                Width="32" Height="32"
+                                Margin="0,0,8,0" 
+                                Foreground="#FF673AB7"/>
+                                <TextBlock Text="空间数据管理"
+                   Style="{StaticResource SideNavTextStyle}" 
+                   Foreground="#FF673AB7"/>
                             </StackPanel>
                         </Button>
 

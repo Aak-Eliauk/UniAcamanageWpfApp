@@ -21,15 +21,29 @@ namespace UniAcamanageWpfApp
         private Teacher? _teacherInfo;
         private static readonly string ConnectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
         public Teacher? TeacherInfo { get; set; }
+        public Visibility AdminButtonVisibility
+        {
+            get
+            {
+                return GlobalUserState.Role == "Admin" ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
 
         public TeacherMainWindow(string username, string role, string teacherID)
         {
             InitializeComponent();
+            this.DataContext = this;
             SideNav.Tag = "Collapsed";
 
             _currentUserName = username;
             _currentUserRole = role;
             _teacherID = teacherID;
+            // 如果不是管理员，隐藏空间数据管理按钮
+            if (GlobalUserState.Role != "Admin")
+            {
+                BtnSpatialDataManage.Visibility = Visibility.Collapsed;
+            }
+
 
             // 查询教师信息
             _teacherInfo = GetTeacherInfo(_teacherID);
@@ -147,9 +161,15 @@ namespace UniAcamanageWpfApp
                         // 切换到 GradeManagementView
                         MainContentPresenter.Content = new GradeManagementView();
                         break;
+                    case "BtnSpatialDataManage":
+                        if (GlobalUserState.Role == "Admin")
+                        {
+                            var importWindow = new ImportSpatialDataWindow();
+                            importWindow.ShowDialog(); // 使用 ShowDialog 以模态方式显示
+                        }
+                        else MessageBox.Show("您没有权限访问此功能！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                        break;
                     default:
-                        var importWindow = new ImportSpatialDataWindow();
-                        importWindow.ShowDialog();
                         MainContentPresenter.Content = new TextBlock
                         {
                             Text = $"[{btn.Name}] - 占位内容",
