@@ -4,8 +4,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace UniAcamanageWpfApp.Models
 {
-    [Table("Classroom")] // 实际的数据库表名保持不变
-    public class ClassroomSpatial // 更明确的类名
+    [Table("Classroom")]
+    public class ClassroomSpatial
     {
         [Key]
         public int ClassroomID { get; set; }
@@ -21,8 +21,10 @@ namespace UniAcamanageWpfApp.Models
         [MaxLength(100)]
         public string SpatialLocation { get; set; }
 
-        public Geometry Shape { get; set; }
+        // 改为具体的 Polygon 类型，因为教室形状是多边形
+        public Polygon Shape { get; set; }
 
-        public Geometry CenterPoint { get; set; }
+        // 改为具体的 Point 类型，因为中心点是一个点
+        public Point CenterPoint { get; set; }
     }
 }

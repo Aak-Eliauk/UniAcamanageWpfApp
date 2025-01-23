@@ -7,5 +7,6 @@
         public string CourseName { get; set; }  // 从Course表关联获取
         public string CourseCode { get; set; }  // 从Course表关联获取
         public string SemesterName { get; set; } // 从Semester表关联获取
+        public virtual Course Course { get; set; }
     }
 }

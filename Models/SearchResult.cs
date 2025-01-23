@@ -14,5 +14,8 @@ namespace UniAcamanageWpfApp.Models
         public double Longitude { get; set; }
         public bool IsClassroom { get; set; }
         public ClassroomSpatial Classroom { get; set; }
+        public string Source { get; set; }  // "Database" 或 "OSM"
+        public Dictionary<string, string> AdditionalInfo { get; set; }
+        public string IconKind { get; set; }  // MaterialDesign图标名称
     }
 }

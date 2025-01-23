@@ -2,6 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>中国地质大学未来城地图</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -10,6 +11,7 @@
             margin: 0;
             padding: 0;
         }
+
         .custom-popup {
             font-size: 14px;
         }
@@ -28,7 +30,6 @@
             width: 30px;
             height: 30px;
             border-radius: 50% 50% 50% 0;
-            background: #c30b82;
             position: absolute;
             transform: rotate(-45deg);
             left: 50%;
@@ -53,179 +54,280 @@
             .marker-pin.poi {
                 background: #4caf50;
             }
+
+        .start-marker .marker-pin {
+            background: #4caf50;
+        }
+
+        .end-marker .marker-pin {
+            background: #f44336;
+        }
+
+        .highlighted-classroom {
+            color: #f44336 !important;
+            weight: 3;
+            fillColor: #f44336;
+            fillOpacity: 0.5;
+        }
+
+        .route-line {
+            stroke: #4285f4;
+            stroke-width: 4;
+            stroke-opacity: 0.8;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 设置你的密钥
+        // 全局状态管理
+        const MapState = {
+            map: null,
+            buildingsLayer: null,
+            markersLayer: null,
+            routeLayer: null,
+            startMarker: null,
+            endMarker: null,
+            isLocationPickingEnabled: false,
+            locationPickingType: null
+        };
+
+        // 密钥定义
         const GAODE_KEY = '1fc63e394eb474e30ae03a91548ff144';
         const TIANDITU_KEY = '4caf65c85971e2c1a4c046ae04aa22ad';
 
-        // 1. 首先创建地图实例
-        var map = L.map('map', {
-            center: [30.460485, 114.613861],
-            zoom: 17,
-            minZoom: 15,
-            maxZoom: 20,
-            maxBounds: [
-                [30.45, 114.60],
-                [30.47, 114.63]
-            ],
-            maxBoundsViscosity: 1.0
-        });
-
-        // 2. 创建图层组
-        var buildingsLayer = L.layerGroup().addTo(map);
-        var markersLayer = L.layerGroup().addTo(map);
-
-        // 3. 定义底图
-        // OpenStreetMap（默认底图）
-        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 20,
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);  // 添加到地图作为默认图层
-
-        // 高德地图（需要密钥）
-        const gaodeLayer = L.tileLayer(`https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}&key=${GAODE_KEY}`, {
-            subdomains: ["1", "2", "3", "4"],
-            maxZoom: 19,
-            attribution: '© 高德地图'
-        });
-
-        // 高德卫星图（需要密钥）
-        const gaodeSatelliteLayer = L.tileLayer(`https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}&key=${GAODE_KEY}`, {
-            subdomains: ["1", "2", "3", "4"],
-            maxZoom: 19,
-            attribution: '© 高德卫星图'
-        });
-
-        // 天地图（需要密钥）
-        const tiandituLayer = L.tileLayer(`https://t{s}.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIANDITU_KEY}`, {
-            subdomains: ['0', '1', '2', '3', '4', '5', '6', '7'],
-            maxZoom: 19,
-            attribution: '© 天地图'
-        });
-
-        // 4. 配置图层控制
-        const baseMaps = {
-            "OpenStreetMap": osmLayer
-        };
-
-        // 如果有高德地图密钥，添加高德地图图层
-        if (GAODE_KEY !== 'YOUR_GAODE_KEY') {
-            baseMaps["高德地图"] = gaodeLayer;
-            baseMaps["高德卫星图"] = gaodeSatelliteLayer;
-        }
-
-        // 如果有天地图密钥，添加天地图图层
-        if (TIANDITU_KEY !== 'YOUR_TIANDITU_KEY') {
-            baseMaps["天地图"] = tiandituLayer;
-        }
-
-        const overlayMaps = {
-            "教室": buildingsLayer,
-            "标记": markersLayer
-        };
-
-        // 5. 添加图层控制器
-        L.control.layers(baseMaps, overlayMaps, {
-            collapsed: false
-        }).addTo(map);
-
-        // 6. 添加比例尺
-        L.control.scale({
-            metric: true,
-            imperial: false
-        }).addTo(map);
-
-        // 7. 函数定义
-        function addClassroom(geoJson, properties) {
-            console.log('Adding classroom:', properties.name);
-            console.log('Original GeoJSON:', geoJson);
-
+        // 初始化地图
+        function initializeMap() {
             try {
-                // 修正坐标顺序
-                if (geoJson.geometry.type === 'Polygon') {
-                    // 交换每个坐标对的顺序
-                    const correctedCoordinates = geoJson.geometry.coordinates[0].map(coord => [coord[1], coord[0]]);
-                    geoJson = {
-                        ...geoJson,
-                        geometry: {
-                            type: 'Polygon',
-                            coordinates: [correctedCoordinates]
-                        }
-                    };
+                // 创建地图实例
+                MapState.map = L.map('map', {
+                    center: [30.460485, 114.613861],
+                    zoom: 17,
+                    minZoom: 15,
+                    maxZoom: 20,
+                    maxBounds: [
+                        [30.45, 114.60],
+                        [30.47, 114.63]
+                    ],
+                    maxBoundsViscosity: 1.0
+                });
+
+                // 添加底图
+                const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 20,
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(MapState.map);
+
+                // 高德地图图层
+                const gaodeLayer = L.tileLayer(`https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}&key=${GAODE_KEY}`, {
+                    subdomains: ["1", "2", "3", "4"],
+                    maxZoom: 19,
+                    attribution: '© 高德地图'
+                });
+
+                // 高德卫星图层
+                const gaodeSatelliteLayer = L.tileLayer(`https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}&key=${GAODE_KEY}`, {
+                    subdomains: ["1", "2", "3", "4"],
+                    maxZoom: 19,
+                    attribution: '© 高德卫星图'
+                });
+
+                // 天地图图层配置
+                const tiandituLayer = L.layerGroup([
+                    L.tileLayer(`https://t{s}.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIANDITU_KEY}`, {
+                        subdomains: ['0', '1', '2', '3', '4', '5', '6', '7'],
+                        maxZoom: 18
+                    }),
+                    L.tileLayer(`https://t{s}.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIANDITU_KEY}`, {
+                        subdomains: ['0', '1', '2', '3', '4', '5', '6', '7'],
+                        maxZoom: 18
+                    })
+                ]);
+
+                // 创建图层
+                MapState.buildingsLayer = L.layerGroup().addTo(MapState.map);
+                MapState.markersLayer = L.layerGroup().addTo(MapState.map);
+
+                // 配置底图和图层控制
+                const baseMaps = {
+                    "OpenStreetMap": osmLayer,
+                    "高德地图": gaodeLayer,
+                    "高德卫星图": gaodeSatelliteLayer,
+                    "天地图": tiandituLayer
+                };
+
+                const overlayMaps = {
+                    "教室": MapState.buildingsLayer,
+                    "标记": MapState.markersLayer
+                };
+
+                L.control.layers(baseMaps, overlayMaps, {
+                    collapsed: false
+                }).addTo(MapState.map);
+
+                console.log('Map initialized successfully');
+            } catch (error) {
+                console.error('Map initialization failed:', error);
+            }
+        }
+
+        // 教室相关功能
+        function addClassroom(geoJson) {
+            try {
+                if (!geoJson || !geoJson.geometry || !geoJson.properties) {
+                    throw new Error('Invalid GeoJSON data');
                 }
 
-                console.log('Corrected GeoJSON:', geoJson);
+                // 创建简化的属性对象
+                const properties = {
+                    id: geoJson.properties.id,
+                    name: geoJson.properties.name || '未命名教室',
+                    building: geoJson.properties.building || '未知位置',
+                    floor: geoJson.properties.floor || 1,
+                    capacity: geoJson.properties.capacity || 0
+                };
 
-                const layer = L.geoJSON(geoJson, {
+                // 坐标处理
+                const coordinates = geoJson.geometry.coordinates[0].map(coord => [coord[1], coord[0]]);
+
+                const layer = L.geoJSON({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [coordinates]
+                    },
+                    properties: properties
+                }, {
                     style: {
                         color: '#1e88e5',
                         weight: 2,
                         fillColor: '#1e88e5',
                         fillOpacity: 0.3
                     }
-                }).addTo(buildingsLayer);
+                }).addTo(MapState.buildingsLayer);
 
-                layer.feature = {
-                    properties: {
-                        ...properties,
-                        classroomID: properties.classroomID
-                    }
-                };
-
-                layer.bindPopup(`
+                // 立即创建和绑定弹出窗口内容
+                const popupContent = `
             <div class='custom-popup'>
                 <h3>${properties.name}</h3>
-                <p>${properties.description || ''}</p>
-                <p>位置: ${properties.location || '未指定'}</p>
+                <p>${properties.building} ${properties.floor}楼</p>
+                <p>容量：${properties.capacity}人</p>
             </div>
-        `);
+        `;
+                layer.bindPopup(popupContent);
 
-                layer.on('mouseover', function (e) {
-                    this.setStyle({
-                        fillOpacity: 0.5,
-                        weight: 3
-                    });
-                }).on('mouseout', function (e) {
-                    this.setStyle({
-                        fillOpacity: 0.3,
-                        weight: 2
-                    });
+                // 使用防抖处理点击事件
+                let clickTimeout;
+                layer.on({
+                    mouseover: (e) => {
+                        e.target.setStyle({
+                            fillOpacity: 0.5,
+                            weight: 3
+                        });
+                    },
+                    mouseout: (e) => {
+                        e.target.setStyle({
+                            fillOpacity: 0.3,
+                            weight: 2
+                        });
+                    },
+                    click: (e) => {
+                        // 清除之前的超时
+                        if (clickTimeout) {
+                            clearTimeout(clickTimeout);
+                        }
+
+                        // 立即显示弹出窗口
+                        layer.openPopup();
+
+                        // 延迟发送点击事件，使用简化的数据结构
+                        clickTimeout = setTimeout(() => {
+                            try {
+                                // 创建一个较小的消息对象
+                                const message = {
+                                    type: 'classroom-click',
+                                    data: {
+                                        id: properties.id,
+                                        name: properties.name,
+                                        building: properties.building,
+                                        floor: properties.floor,
+                                        capacity: properties.capacity
+                                    }
+                                };
+
+                                // 使用 MessageQueue 来处理消息发送
+                                MessageQueue.add(message);
+                            } catch (error) {
+                                console.warn('Click event handling warning:', error);
+                            }
+                        }, 100);
+                    }
                 });
-
-                // 调试输出边界
-                const bounds = layer.getBounds();
-                console.log(`Classroom ${properties.name} bounds:`, bounds);
-                console.log(`Southwest: [${bounds.getSouth()}, ${bounds.getWest()}]`);
-                console.log(`Northeast: [${bounds.getNorth()}, ${bounds.getEast()}]`);
 
                 return layer;
             } catch (error) {
                 console.error('Error adding classroom:', error);
-                console.error('Error details:', error.stack);
                 return null;
             }
         }
 
-        function resetClassroomStyles() {
-            buildingsLayer.eachLayer(function (layer) {
-                layer.setStyle({
-                    color: '#1e88e5',
-                    weight: 2,
-                    fillColor: '#1e88e5',
-                    fillOpacity: 0.3
+        // 改进的消息队列实现
+        const MessageQueue = {
+            queue: [],
+            isProcessing: false,
+
+            add: function (message) {
+                try {
+                    // 直接发送消息，如果失败则加入队列
+                    window.chrome.webview.postMessage(message);
+                } catch (error) {
+                    console.warn('Direct message send failed, queuing:', error);
+                    this.queue.push(message);
+                    if (!this.isProcessing) {
+                        this.processQueue();
+                    }
+                }
+            },
+
+            processQueue: function () {
+                if (this.queue.length === 0) {
+                    this.isProcessing = false;
+                    return;
+                }
+
+                this.isProcessing = true;
+                const message = this.queue[0];
+
+                try {
+                    window.chrome.webview.postMessage(message);
+                    this.queue.shift(); // 成功后移除消息
+
+                    // 继续处理队列
+                    setTimeout(() => this.processQueue(), 100);
+                } catch (error) {
+                    console.error('Error processing message from queue:', error);
+                    // 如果失败，暂停一段时间后重试
+                    setTimeout(() => this.processQueue(), 1000);
+                }
+            }
+        };
+
+        // 初始化完成通知改进
+        function notifyInitialization() {
+            try {
+                window.chrome.webview.postMessage({
+                    type: 'mapInitialized',
+                    data: true
                 });
-            });
+            } catch (error) {
+                console.warn('Initialization notification failed:', error);
+            }
         }
 
-
         function highlightClassrooms(classroomIds) {
-            buildingsLayer.eachLayer(function (layer) {
-                if (layer.feature && classroomIds.includes(layer.feature.properties.classroomID)) {
+            MapState.buildingsLayer.eachLayer(layer => {
+                if (layer.feature && classroomIds.includes(layer.feature.properties.id)) {
                     layer.setStyle({
                         color: '#f44336',
                         weight: 3,
@@ -237,107 +339,137 @@
             });
         }
 
-        function zoomToClassroom(classroomId) {
-            console.log('Zooming to classroom:', classroomId);
-            let found = false;
-
-            buildingsLayer.eachLayer(function (layer) {
-                if (layer.feature && layer.feature.properties.classroomID === classroomId) {
-                    found = true;
-                    const bounds = layer.getBounds();
-                    console.log('Found classroom bounds:', bounds);
-
-                    if (bounds && bounds.isValid()) {
-                        console.log('Zooming to bounds:', {
-                            south: bounds.getSouth(),
-                            west: bounds.getWest(),
-                            north: bounds.getNorth(),
-                            east: bounds.getEast()
-                        });
-
-                        map.fitBounds(bounds, {
-                            padding: [50, 50],
-                            maxZoom: 19,
-                            animate: true,
-                            duration: 1
-                        });
-                        layer.openPopup();
-                    } else {
-                        console.error('Invalid bounds for classroom:', classroomId);
-                        // 如果边界无效，尝试使用第一个坐标点
-                        try {
-                            const coords = layer.feature.geometry.coordinates[0][0];
-                            console.log('Using first coordinate as center:', coords);
-                            // 注意：这里需要交换坐标顺序
-                            map.setView([coords[1], coords[0]], 19);
-                            layer.openPopup();
-                        } catch (e) {
-                            console.error('Fallback failed:', e);
-                        }
-                    }
-                }
-            });
-
-            if (!found) {
-                console.error('Classroom not found:', classroomId);
-            }
-        }
-
-        function showAllClassrooms() {
-            if (buildingsLayer.getLayers().length > 0) {
-                map.fitBounds(buildingsLayer.getBounds());
-            }
-        }
-
-        function resetView() {
-            map.setView([30.460485, 114.613861], 17);
-        }
-
-        function clearMarkers() {
-            markersLayer.clearLayers();
-        }
-
-        function addCustomMarker(lat, lon, title, type) {
-            // 解码 URL 编码的标题
-            const decodedTitle = decodeURIComponent(title);
-
-            let icon = L.divIcon({
-                className: 'custom-marker',
-                html: `<div class="marker-pin ${type}"></div>`,
+        // 标记和路线功能
+        function addMarker(type, lat, lon, title = '') {
+            const icon = L.divIcon({
+                className: `custom-marker ${type}-marker`,
+                html: `<div class="marker-pin"></div>`,
                 iconSize: [30, 30],
                 iconAnchor: [15, 30]
             });
 
-            L.marker([lat, lon], { icon: icon })
-                .bindPopup(decodedTitle)
-                .addTo(markersLayer);
+            const marker = L.marker([lat, lon], { icon });
+            if (title) {
+                marker.bindPopup(title);
+            }
+
+            if (type === 'start') {
+                if (MapState.startMarker) {
+                    MapState.markersLayer.removeLayer(MapState.startMarker);
+                }
+                MapState.startMarker = marker;
+            } else if (type === 'end') {
+                if (MapState.endMarker) {
+                    MapState.markersLayer.removeLayer(MapState.endMarker);
+                }
+                MapState.endMarker = marker;
+            }
+
+            marker.addTo(MapState.markersLayer);
+            return marker;
         }
 
-        // 添加一个全局的解码辅助函数
-        function safeDecodeURIComponent(str) {
+        function showRoute(routeGeoJson) {
+            if (MapState.routeLayer) {
+                MapState.map.removeLayer(MapState.routeLayer);
+            }
+
+            MapState.routeLayer = L.geoJSON(routeGeoJson, {
+                style: {
+                    color: '#4285f4',
+                    weight: 4,
+                    opacity: 0.8
+                }
+            }).addTo(MapState.map);
+
+            MapState.map.fitBounds(MapState.routeLayer.getBounds(), {
+                padding: [50, 50]
+            });
+        }
+
+        // 工具函数
+        function focusOnLocation(lat, lon, zoom = 18) {
+            MapState.map.setView([lat, lon], zoom);
+        }
+
+        function showAllClassrooms() {
+            if (MapState.buildingsLayer.getLayers().length > 0) {
+                MapState.map.fitBounds(MapState.buildingsLayer.getBounds(), {
+                    padding: [50, 50]
+                });
+            }
+        }
+
+        function resetView() {
+            MapState.map.setView([30.460485, 114.613861], 17);
+        }
+
+        // 通信函数
+        function notifyClassroomClick(properties) {
             try {
-                return decodeURIComponent(str);
+                window.chrome.webview.postMessage({
+                    type: 'classroom-click',
+                    data: properties
+                });
+            } catch (error) {
+                console.error('Error sending classroom click event:', error);
+            }
+        }
+
+        function handleError(error, context) {
+            console.error(`Error in ${context}:`, error);
+            try {
+                window.chrome.webview.postMessage({
+                    type: 'error',
+                    context: context,
+                    message: error.message
+                });
             } catch (e) {
-                console.error('解码失败:', e);
-                return str;
+                console.error('Error sending error message:', e);
             }
         }
 
-        // 在添加标记时使用安全的解码函数
-        function addMarkerWithPopup(lat, lon, title) {
-            const decodedTitle = safeDecodeURIComponent(title);
-            L.marker([lat, lon])
-                .bindPopup(decodedTitle)
-                .addTo(map)
-                .openPopup();
-        }
+        // 导出函数供 C# 调用
+        window.mapFunctions = {
+            addClassroom,
+            highlightClassrooms,
+            addMarker,
+            showRoute,
+            focusOnLocation,
+            showAllClassrooms,
+            resetView
+        };
 
-        // 添加地图事件监听
-        map.on('layeradd', function (e) {
-            if (e.layer && e.layer.getBounds) {
-                const bounds = e.layer.getBounds();
-                console.log('Added layer bounds:', bounds);
+        // 初始化地图
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeMap();
+
+            // 通知 C# 初始化完成
+            try {
+                window.chrome.webview.postMessage({
+                    type: 'mapInitialized',
+                    data: true
+                });
+            } catch (error) {
+                console.error('Error sending initialization message:', error);
             }
+        });
+
+        // 错误处理
+        window.onerror = function (msg, url, line, col, error) {
+            console.warn('JavaScript error:', {
+                message: msg,
+                url: url,
+                line: line,
+                column: col,
+                error: error
+            });
+            return false;
+        };
+
+        // 添加未处理的 Promise 错误处理
+        window.addEventListener('unhandledrejection', function (event) {
+            console.warn('Unhandled promise rejection:', event.reason);
         });
     </script>
 </body>
