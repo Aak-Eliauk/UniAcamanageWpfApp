@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using UniAcamanageWpfApp.Models;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using NetTopologySuite.Geometries;
 
 namespace UniAcamanageWpfApp.Data
 {
@@ -28,6 +30,19 @@ namespace UniAcamanageWpfApp.Data
             {
                 entity.ToTable("Classroom");
                 entity.HasKey(e => e.ClassroomID);
+
+                entity.Property(e => e.RoomNumber)
+                    .HasMaxLength(20)
+                    .IsRequired();
+
+                entity.Property(e => e.SpatialLocation)
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.Shape)
+                    .HasColumnType("geometry");
+
+                entity.Property(e => e.CenterPoint)
+                    .HasColumnType("geometry");
             });
 
             // 配置 Course

@@ -75,10 +75,41 @@
             stroke-width: 4;
             stroke-opacity: 0.8;
         }
+        .map-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+        }
+
+            .map-controls button {
+                display: block;
+                width: 30px;
+                height: 30px;
+                line-height: 30px;
+                text-align: center;
+                background: white;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                margin: 5px;
+                cursor: pointer;
+                font-size: 18px;
+            }
+
+                .map-controls button:hover {
+                    background: #f4f4f4;
+                }
     </style>
 </head>
 <body>
     <div id="map"></div>
+    <!-- 地图控制按钮 -->
+    <div class="map-controls">
+        <button onclick="mapFunctions.resetView()" title="重置视图">⌂</button>
+    </div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // 全局状态管理
@@ -89,6 +120,7 @@
             routeLayer: null,
             startMarker: null,
             endMarker: null,
+            searchMarkersLayer: null,
             isLocationPickingEnabled: false,
             locationPickingType: null
         };
@@ -148,6 +180,7 @@
                 // 创建图层
                 MapState.buildingsLayer = L.layerGroup().addTo(MapState.map);
                 MapState.markersLayer = L.layerGroup().addTo(MapState.map);
+                MapState.searchMarkersLayer = L.layerGroup().addTo(MapState.map);
 
                 // 配置底图和图层控制
                 const baseMaps = {
@@ -175,52 +208,70 @@
         // 教室相关功能
         function addClassroom(geoJson) {
             try {
+                console.log('Adding classroom with data:', JSON.stringify(geoJson, null, 2));
+
                 if (!geoJson || !geoJson.geometry || !geoJson.properties) {
+                    console.error('Invalid GeoJSON data:', geoJson);
                     throw new Error('Invalid GeoJSON data');
                 }
 
-                // 创建简化的属性对象
-                const properties = {
-                    id: geoJson.properties.id,
-                    name: geoJson.properties.name || '未命名教室',
-                    building: geoJson.properties.building || '未知位置',
-                    floor: geoJson.properties.floor || 1,
-                    capacity: geoJson.properties.capacity || 0
+                // 确保 coordinates 是有效的数组
+                if (!Array.isArray(geoJson.geometry.coordinates[0])) {
+                    console.error('Invalid coordinates format:', geoJson.geometry.coordinates);
+                    throw new Error('Invalid coordinates format');
+                }
+
+                // 转换坐标
+                const coordinates = geoJson.geometry.coordinates[0].map(coord => {
+                    console.log('Processing coordinate:', coord);
+                    return [parseFloat(coord[1]), parseFloat(coord[0])];
+                });
+
+                console.log('Converted coordinates:', coordinates);
+
+                const layer = L.polygon(coordinates, {
+                    color: '#1e88e5',
+                    weight: 2,
+                    fillColor: '#1e88e5',
+                    fillOpacity: 0.3
+                });
+
+                // 设置 feature 属性
+                layer.feature = {
+                    type: 'Feature',
+                    geometry: geoJson.geometry,
+                    properties: {
+                        ...geoJson.properties,  // 保留所有原始属性
+                        classroomID: geoJson.properties.classroomID || geoJson.properties.ClassroomID  // 确保 classroomID 存在
+                    }
                 };
 
-                // 坐标处理
-                const coordinates = geoJson.geometry.coordinates[0].map(coord => [coord[1], coord[0]]);
+                console.log('创建的图层:', layer);
+                console.log('图层的属性:', layer.feature.properties);
 
-                const layer = L.geoJSON({
-                    type: 'Feature',
-                    geometry: {
-                        type: 'Polygon',
-                        coordinates: [coordinates]
-                    },
-                    properties: properties
-                }, {
-                    style: {
-                        color: '#1e88e5',
-                        weight: 2,
-                        fillColor: '#1e88e5',
-                        fillOpacity: 0.3
-                    }
-                }).addTo(MapState.buildingsLayer);
+                // 存储原始数据用于调试
+                layer.originalData = geoJson;
 
-                // 立即创建和绑定弹出窗口内容
+                // 使用 properties 中的数据创建弹出窗口内容
+                const props = geoJson.properties;
+                console.log('Popup properties:', props);
+
                 const popupContent = `
             <div class='custom-popup'>
-                <h3>${properties.name}</h3>
-                <p>${properties.building} ${properties.floor}楼</p>
-                <p>容量：${properties.capacity}人</p>
+                <h3>${props.roomNumber || props.RoomNumber || '未知教室'}</h3>
+                <p>${props.spatialLocation || props.SpatialLocation || '未知位置'}</p>
+                <p>${props.floor || props.Floor || '未知'}楼</p>
+                <p>容量：${props.capacity || props.Capacity || '未知'}人</p>
+                <p>ID: ${props.classroomID || props.ClassroomID || '未知'}</p>
             </div>
         `;
+
                 layer.bindPopup(popupContent);
 
-                // 使用防抖处理点击事件
-                let clickTimeout;
+                // 添加事件处理
                 layer.on({
                     mouseover: (e) => {
+                        console.log('Mouseover classroom:', e.target.feature.properties);
                         e.target.setStyle({
                             fillOpacity: 0.5,
                             weight: 3
@@ -233,41 +284,23 @@
                         });
                     },
                     click: (e) => {
-                        // 清除之前的超时
-                        if (clickTimeout) {
-                            clearTimeout(clickTimeout);
-                        }
-
-                        // 立即显示弹出窗口
+                        console.log('Clicked classroom:', e.target.feature.properties);
                         layer.openPopup();
-
-                        // 延迟发送点击事件，使用简化的数据结构
-                        clickTimeout = setTimeout(() => {
-                            try {
-                                // 创建一个较小的消息对象
-                                const message = {
-                                    type: 'classroom-click',
-                                    data: {
-                                        id: properties.id,
-                                        name: properties.name,
-                                        building: properties.building,
-                                        floor: properties.floor,
-                                        capacity: properties.capacity
-                                    }
-                                };
-
-                                // 使用 MessageQueue 来处理消息发送
-                                MessageQueue.add(message);
-                            } catch (error) {
-                                console.warn('Click event handling warning:', error);
-                            }
-                        }, 100);
+                        if (window.chrome && window.chrome.webview) {
+                            window.chrome.webview.postMessage({
+                                type: 'classroom-click',
+                                data: e.target.feature.properties
+                            });
+                        }
                     }
                 });
 
+                // 添加到图层
+                layer.addTo(MapState.buildingsLayer);
                 return layer;
             } catch (error) {
-                console.error('Error adding classroom:', error);
+                console.error('添加教室时出错:', error);
+                console.error('GeoJSON data:', geoJson);
                 return null;
             }
         }
@@ -437,8 +470,138 @@
             showRoute,
             focusOnLocation,
             showAllClassrooms,
-            resetView
+            resetView,
+            // 添加新的函数
+            resetHighlights: function() {
+        console.log('重置所有教室高亮');
+        MapState.buildingsLayer.eachLayer(layer => {
+            layer.setStyle({
+                color: '#1e88e5',
+                weight: 2,
+                fillColor: '#1e88e5',
+                fillOpacity: 0.3
+            });
+            layer.closePopup(); // 关闭信息窗口
+        });
+    },
+
+            zoomToClassroom: function (classroomId) {
+                console.log('开始定位教室:', classroomId);
+
+                try {
+                    // 先重置所有教室样式
+                    this.resetHighlights();
+
+                    let found = false;
+                    MapState.buildingsLayer.eachLayer(layer => {
+                        if (layer.feature && layer.feature.properties.classroomID === classroomId) {
+                            console.log('找到匹配的教室');
+                            found = true;
+
+                            // 设置高亮样式
+                            const highlightStyle = {
+                                color: '#f44336',
+                                weight: 3,
+                                fillColor: '#f44336',
+                                fillOpacity: 0.5
+                            };
+                            layer.setStyle(highlightStyle);
+
+                            // 获取边界并缩放
+                            const bounds = layer.getBounds();
+                            console.log('教室边界:', bounds);
+                            MapState.map.flyToBounds(bounds, {
+                                padding: [50, 50],
+                                maxZoom: 19,
+                                duration: 1
+                            });
+
+                            // 打开信息窗口
+                            layer.openPopup();
+                        }
+                    });
+
+                    if (!found) {
+                        console.warn('未找到教室:', classroomId);
+                        if (window.chrome && window.chrome.webview) {
+                            window.chrome.webview.postMessage({
+                                type: 'classroom-not-found',
+                                data: classroomId
+                            });
+                        }
+                    }
+                } catch (error) {
+                    console.error('定位教室时出错:', error);
+                }
+            },
+
+            // 更新 focusOnLocation 函数
+            focusOnLocation: function (lat, lon, zoom = 18) {
+                MapState.map.setView([lat, lon], zoom);
+            },
+
+            // 更新 highlightClassrooms 函数
+            highlightClassrooms: function (classroomIds) {
+                // 首先重置所有教室的样式
+                this.resetHighlights();
+
+                // 然后高亮指定的教室
+                MapState.buildingsLayer.eachLayer(layer => {
+                    if (layer.feature && classroomIds.includes(layer.feature.properties.classroomID)) {
+                        layer.setStyle({
+                            color: '#f44336',
+                            weight: 3,
+                            fillColor: '#f44336',
+                            fillOpacity: 0.5
+                        });
+                        layer.bringToFront();
+                    }
+                });
+            },
+
+            // 更新 showAllClassrooms 函数
+            showAllClassrooms: function () {
+                if (MapState.buildingsLayer.getLayers().length > 0) {
+                    MapState.map.fitBounds(MapState.buildingsLayer.getBounds(), {
+                        padding: [50, 50]
+                    });
+                }
+            },
+
+            // 更新 resetView 函数
+            resetView: function () {
+                MapState.map.setView([30.460485, 114.613861], 17);
+                this.resetHighlights(); // 重置高亮显示
+            },
+
+            clearSearchMarkers: function () {
+                MapState.searchMarkersLayer.clearLayers();
+            },
+
+            addSearchMarker: function (lat, lon, title) {
+                const icon = L.divIcon({
+                    className: 'custom-marker search-marker',
+                    html: '<div class="marker-pin poi"></div>',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 30]
+                });
+
+                const marker = L.marker([lat, lon], { icon })
+                    .bindPopup(title)
+                    .addTo(MapState.searchMarkersLayer);
+
+                marker.openPopup();
+                return marker;
+            },
+
+            resetView: function () {
+                MapState.map.setView([30.460485, 114.613861], 17);
+                this.resetHighlights();
+            },
         };
+
+        window.MapState = MapState;
+        window.mapFunctions = mapFunctions;
 
         // 初始化地图
         document.addEventListener('DOMContentLoaded', () => {
