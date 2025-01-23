@@ -102,6 +102,39 @@
                 .map-controls button:hover {
                     background: #f4f4f4;
                 }
+        .custom-div-icon {
+            background: transparent;
+            border: none;
+        }
+
+        .marker-pin {
+            width: 30px;
+            height: 30px;
+            border-radius: 50% 50% 50% 0;
+            position: absolute;
+            transform: rotate(-45deg);
+            left: 50%;
+            top: 50%;
+            margin: -15px 0 0 -15px;
+        }
+
+            .marker-pin::after {
+                content: '';
+                width: 24px;
+                height: 24px;
+                margin: 3px 0 0 3px;
+                background: #fff;
+                position: absolute;
+                border-radius: 50%;
+            }
+
+        .start-pin {
+            background: #4CAF50; /* 绿色起点 */
+        }
+
+        .end-pin {
+            background: #f44336; /* 红色终点 */
+        }
     </style>
 </head>
 <body>
@@ -112,15 +145,91 @@
     </div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // 添加坐标转换工具函数
+        const CoordinateConverter = {
+            PI: 3.14159265358979324,
+            x_pi: 3.14159265358979324 * 3000.0 / 180.0,
+
+            // WGS84 转 GCJ02（适用于调用高德API前转换起终点坐标）
+            wgs84ToGcj02: function (lng, lat) {
+                if (this.outOfChina(lng, lat)) {
+                    return [lng, lat];
+                }
+
+                let dlat = this.transformLat(lng - 105.0, lat - 35.0);
+                let dlng = this.transformLng(lng - 105.0, lat - 35.0);
+
+                const radlat = lat / 180.0 * this.PI;
+                let magic = Math.sin(radlat);
+                magic = 1 - 0.00669342162296594323 * magic * magic;
+                const sqrtmagic = Math.sqrt(magic);
+
+                dlat = (dlat * 180.0) / ((6378245.0 * (1 - 0.006693421622966)) / (magic * sqrtmagic) * this.PI);
+                dlng = (dlng * 180.0) / (6378245.0 / sqrtmagic * Math.cos(radlat) * this.PI);
+
+                const mglat = lat + dlat;
+                const mglng = lng + dlng;
+
+                return [mglng, mglat];
+            },
+
+            // GCJ02 转 WGS84（适用于接收高德API返回的路径点后转换）
+            gcj02ToWgs84: function (lng, lat) {
+                if (this.outOfChina(lng, lat)) {
+                    return [lng, lat];
+                }
+
+                let dlat = this.transformLat(lng - 105.0, lat - 35.0);
+                let dlng = this.transformLng(lng - 105.0, lat - 35.0);
+
+                const radlat = lat / 180.0 * this.PI;
+                let magic = Math.sin(radlat);
+                magic = 1 - 0.00669342162296594323 * magic * magic;
+                const sqrtmagic = Math.sqrt(magic);
+
+                dlat = (dlat * 180.0) / ((6378245.0 * (1 - 0.006693421622966)) / (magic * sqrtmagic) * this.PI);
+                dlng = (dlng * 180.0) / (6378245.0 / sqrtmagic * Math.cos(radlat) * this.PI);
+
+                const mglat = lat + dlat;
+                const mglng = lng + dlng;
+
+                return [lng * 2 - mglng, lat * 2 - mglat];
+            },
+
+            transformLat: function (lng, lat) {
+                let ret = -100.0 + 2.0 * lng + 3.0 * lat + 0.2 * lat * lat +
+                    0.1 * lng * lat + 0.2 * Math.sqrt(Math.abs(lng));
+                ret += (20.0 * Math.sin(6.0 * lng * this.PI) + 20.0 * Math.sin(2.0 * lng * this.PI)) * 2.0 / 3.0;
+                ret += (20.0 * Math.sin(lat * this.PI) + 40.0 * Math.sin(lat / 3.0 * this.PI)) * 2.0 / 3.0;
+                ret += (160.0 * Math.sin(lat / 12.0 * this.PI) + 320 * Math.sin(lat * this.PI / 30.0)) * 2.0 / 3.0;
+                return ret;
+            },
+
+            transformLng: function (lng, lat) {
+                let ret = 300.0 + lng + 2.0 * lat + 0.1 * lng * lng +
+                    0.1 * lng * lat + 0.1 * Math.sqrt(Math.abs(lng));
+                ret += (20.0 * Math.sin(6.0 * lng * this.PI) + 20.0 * Math.sin(2.0 * lng * this.PI)) * 2.0 / 3.0;
+                ret += (20.0 * Math.sin(lng * this.PI) + 40.0 * Math.sin(lng / 3.0 * this.PI)) * 2.0 / 3.0;
+                ret += (150.0 * Math.sin(lng / 12.0 * this.PI) + 300.0 * Math.sin(lng / 30.0 * this.PI)) * 2.0 / 3.0;
+                return ret;
+            },
+
+            outOfChina: function (lng, lat) {
+                return (lng < 72.004 || lng > 137.8347 || lat < 0.8293 || lat > 55.8271);
+            },
+        };
+
         // 全局状态管理
         const MapState = {
             map: null,
             buildingsLayer: null,
             markersLayer: null,
             routeLayer: null,
+            navigationLayer: null,
+            searchMarkersLayer: null,
             startMarker: null,
             endMarker: null,
-            searchMarkersLayer: null,
+            routeLine: null,
             isLocationPickingEnabled: false,
             locationPickingType: null
         };
@@ -182,6 +291,9 @@
                 MapState.markersLayer = L.layerGroup().addTo(MapState.map);
                 MapState.searchMarkersLayer = L.layerGroup().addTo(MapState.map);
 
+                // 初始化导航图层
+                MapState.navigationLayer = L.layerGroup().addTo(MapState.map);
+
                 // 配置底图和图层控制
                 const baseMaps = {
                     "OpenStreetMap": osmLayer,
@@ -198,6 +310,26 @@
                 L.control.layers(baseMaps, overlayMaps, {
                     collapsed: false
                 }).addTo(MapState.map);
+
+                // 添加地图点击事件处理
+                MapState.map.on('click', function (e) {
+                    if (!MapState.isLocationPicking) return;
+
+                    const latlng = e.latlng;
+                    const coordinates = `${latlng.lat},${latlng.lng}`;
+
+                    // 发送选择的坐标回 WPF
+                    window.chrome.webview.postMessage({
+                        type: 'locationPicked',
+                        pickType: MapState.locationPickingType,
+                        coordinates: coordinates
+                    });
+
+                    // 重置选点状态
+                    MapState.isLocationPicking = false;
+                    MapState.locationPickingType = null;
+                    MapState.map.getContainer().style.cursor = '';
+                });
 
                 console.log('Map initialized successfully');
             } catch (error) {
@@ -598,10 +730,216 @@
                 MapState.map.setView([30.460485, 114.613861], 17);
                 this.resetHighlights();
             },
+
+            // 导航相关方法
+            startLocationPicking: function (type) {
+                MapState.isLocationPicking = true;
+                MapState.locationPickingType = type;
+                MapState.map.getContainer().style.cursor = 'crosshair';
+            },
+
+            setRouteType: function (type) {
+                MapState.routeType = type;
+                console.log('设置路线类型:', type);
+            },
+
+            clearRoute: function () {
+                if (MapState.routeControl) {
+                    MapState.map.removeControl(MapState.routeControl);
+                    MapState.routeControl = null;
+                }
+                if (MapState.startMarker) {
+                    MapState.markersLayer.removeLayer(MapState.startMarker);
+                    MapState.startMarker = null;
+                }
+                if (MapState.endMarker) {
+                    MapState.markersLayer.removeLayer(MapState.endMarker);
+                    MapState.endMarker = null;
+                }
+                if (MapState.navigationLayer) {
+                    MapState.navigationLayer.clearLayers();
+                }
+            },
+
+            // 修改路线规划函数
+            calculateRoute: async function (startPoint, endPoint, routeType) {
+                try {
+                    console.log('开始路线规划:', {
+                        startPoint: startPoint,
+                        endPoint: endPoint,
+                        routeType: routeType
+                    });
+
+                    const [startLat, startLng] = startPoint.split(',').map(Number);
+                    const [endLat, endLng] = endPoint.split(',').map(Number);
+
+                    // WGS84 转 GCJ02
+                    const [startGcjLng, startGcjLat] = CoordinateConverter.wgs84ToGcj02(startLng, startLat);
+                    const [endGcjLng, endGcjLat] = CoordinateConverter.wgs84ToGcj02(endLng, endLat);
+
+                    console.log('坐标转换结果:', {
+                        start: { wgs84: [startLat, startLng], gcj02: [startGcjLat, startGcjLng] },
+                        end: { wgs84: [endLat, endLng], gcj02: [endGcjLat, endGcjLng] }
+                    });
+
+                    // 添加起终点标记
+                    this.addRouteMarkers(startLat, startLng, endLat, endLng);
+
+                    // 根据路线类型选择正确的端点
+                    const type = routeType === '步行' ? 'walking' : 'bicycling';
+
+                    // 构建URL参数
+                    const params = {
+                        key: GAODE_KEY,
+                        origin: `${startGcjLng},${startGcjLat}`,
+                        destination: `${endGcjLng},${endGcjLat}`,
+                        show_fields: 'cost,steps,polyline',
+                        output: 'json'
+                    };
+
+                    const url = `https://restapi.amap.com/v5/direction/${type}?${new URLSearchParams(params)}`;
+                    console.log('API请求URL:', url);
+
+                    // 添加错误处理和超时
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+
+                    try {
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            mode: 'cors', // 明确指定CORS模式
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json'
+                            },
+                            signal: controller.signal
+                        });
+
+                        clearTimeout(timeoutId);
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+
+                        const data = await response.json();
+                        console.log('收到API响应:', data);
+
+                        if (data.status !== '1') {
+                            throw new Error(data.info || '路线规划失败');
+                        }
+
+                        const path = data.route.paths[0];
+                        console.log('获取到路径数据:', path);
+
+                        // 转换路径点坐标
+                        const polyline = path.steps.map(step => {
+                            return step.polyline.split(';').map(point => {
+                                const [gcjLng, gcjLat] = point.split(',').map(Number);
+                                const [wgsLng, wgsLat] = CoordinateConverter.gcj02ToWgs84(gcjLng, gcjLat);
+                                return [wgsLat, wgsLng];
+                            });
+                        }).flat();
+
+                        console.log('路线坐标点数量:', polyline.length);
+
+                        // 绘制路线
+                        if (MapState.routeLine) {
+                            MapState.navigationLayer.removeLayer(MapState.routeLine);
+                        }
+
+                        MapState.routeLine = L.polyline(polyline, {
+                            color: '#1e88e5',
+                            weight: 6,
+                            opacity: 0.6
+                        }).addTo(MapState.navigationLayer);
+
+                        // 调整地图视图
+                        MapState.map.fitBounds(MapState.routeLine.getBounds(), { padding: [50, 50] });
+
+                        // 处理导航步骤
+                        const steps = path.steps.map(step => ({
+                            instruction: step.instruction,
+                            step_distance: step.step_distance,
+                            duration: step.duration,
+                            orientation: step.orientation,
+                            road_name: step.road_name,
+                            action: step.action,
+                            assistant_action: step.assistant_action
+                        }));
+
+                        console.log('处理后的导航步骤:', steps);
+
+                        // 准备发送的路线信息
+                        const routeInfo = {
+                            status: data.status,
+                            info: data.info,
+                            infocode: data.infocode,
+                            count: data.count,
+                            route: {
+                                distance: path.distance,
+                                duration: path.cost?.duration || "0",
+                                steps: steps
+                            }
+                        };
+
+                        console.log('准备发送给C#的数据:', routeInfo);
+
+                        window.chrome.webview.postMessage({
+                            type: 'routeCalculated',
+                            data: routeInfo
+                        });
+
+                    } catch (error) {
+                        clearTimeout(timeoutId);
+                        throw error;
+                    }
+
+                } catch (error) {
+                    console.error('路线计算错误:', error);
+                    window.chrome.webview.postMessage({
+                        type: 'routeError',
+                        error: error.message
+                    });
+                }
+            },
+
+            addRouteMarkers: function (startLat, startLng, endLat, endLng) {
+                // 清除现有标记
+                if (MapState.startMarker) {
+                    MapState.navigationLayer.removeLayer(MapState.startMarker);
+                    MapState.startMarker = null;
+                }
+                if (MapState.endMarker) {
+                    MapState.navigationLayer.removeLayer(MapState.endMarker);
+                    MapState.endMarker = null;
+                }
+
+                // 添加起点标记
+                MapState.startMarker = L.marker([startLat, startLng], {
+                    icon: L.divIcon({
+                        className: 'custom-div-icon',
+                        html: '<div class="marker-pin start-pin"></div>',
+                        iconSize: [30, 42],
+                        iconAnchor: [15, 42]
+                    })
+                }).addTo(MapState.navigationLayer);
+
+                // 添加终点标记
+                MapState.endMarker = L.marker([endLat, endLng], {
+                    icon: L.divIcon({
+                        className: 'custom-div-icon',
+                        html: '<div class="marker-pin end-pin"></div>',
+                        iconSize: [30, 42],
+                        iconAnchor: [15, 42]
+                    })
+                }).addTo(MapState.navigationLayer);
+
+                return [MapState.startMarker, MapState.endMarker];
+            },
         };
 
         window.MapState = MapState;
-        window.mapFunctions = mapFunctions;
+
 
         // 初始化地图
         document.addEventListener('DOMContentLoaded', () => {

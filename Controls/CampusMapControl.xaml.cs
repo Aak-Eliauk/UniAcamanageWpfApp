@@ -27,6 +27,7 @@ using System.Threading; // 用于 CancellationTokenSource
 using System.Windows.Threading; // 用于 DispatcherTimer
 using Style = System.Windows.Style;
 using System.Text.Json.Serialization;
+using System.ComponentModel;
 
 
 namespace UniAcamanageWpfApp.Controls
@@ -71,6 +72,10 @@ namespace UniAcamanageWpfApp.Controls
             _searchDebounceTimer.AutoReset = false;
 
             Loaded += CampusMapControl_Loaded;
+
+            webView.WebMessageReceived += WebView_WebMessageReceived;
+
+            RegisterWebViewHandler();
         }
 
         private async void CampusMapControl_Loaded(object sender, RoutedEventArgs e)
@@ -103,6 +108,7 @@ namespace UniAcamanageWpfApp.Controls
             }
         }
 
+        #region 教室查询
         private async Task LoadBuildingList()
         {
             try
@@ -145,12 +151,26 @@ namespace UniAcamanageWpfApp.Controls
         {
             try
             {
+                Debug.WriteLine("开始加载教室数据");
                 await _semaphore.WaitAsync();
-                using (var context = new CampusDbContext()) // 创建新的 context 实例
+
+                using (var context = new CampusDbContext())
                 {
+                    // 确保加载所有教室数据
                     _allClassrooms = await context.ClassroomSpatials
                         .AsNoTracking()
+                        .OrderBy(c => c.SpatialLocation)  // 先按建筑物排序
+                        .ThenBy(c => c.Floor)            // 再按楼层排序
+                        .ThenBy(c => c.RoomNumber)       // 最后按房间号排序
                         .ToListAsync();
+
+                    Debug.WriteLine($"从数据库加载了 {_allClassrooms.Count} 个教室");
+
+                    // 输出所有教室信息以供调试
+                    foreach (var classroom in _allClassrooms)
+                    {
+                        Debug.WriteLine($"教室: {classroom.RoomNumber}, 位置: {classroom.SpatialLocation}, 楼层: {classroom.Floor}");
+                    }
                 }
 
                 if (_allClassrooms != null && _allClassrooms.Any())
@@ -164,11 +184,15 @@ namespace UniAcamanageWpfApp.Controls
 
                     await webView.ExecuteScriptAsync("mapFunctions.showAllClassrooms();");
                 }
+                else
+                {
+                    Debug.WriteLine("没有找到任何教室数据");
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"加载教室数据失败: {ex.Message}", "错误");
-                Debug.WriteLine($"加载数据错误: {ex}");
+                Debug.WriteLine($"加载教室数据时出错: {ex}");
+                MessageBox.Show($"加载教室数据失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -554,10 +578,12 @@ namespace UniAcamanageWpfApp.Controls
             {
                 if (cmbBuilding.SelectedItem == null || _allClassrooms == null)
                 {
-                    return; // 如果没有选中项或没有教室数据，直接返回
+                    Debug.WriteLine("建筑物选择改变：无选中项或无教室数据");
+                    return;
                 }
 
                 string selectedBuilding = cmbBuilding.SelectedItem.ToString();
+                Debug.WriteLine($"选择的建筑物: {selectedBuilding}");
 
                 // 确保不会有空值进入 GroupBy
                 var filteredClassrooms = _allClassrooms
@@ -572,9 +598,11 @@ namespace UniAcamanageWpfApp.Controls
                         .ToList();
                 }
 
-                // 按建筑物分组
+                Debug.WriteLine($"筛选后的教室数量: {filteredClassrooms.Count}");
+
+                // 按建筑物分组并排序
                 var groupedClassrooms = filteredClassrooms
-                    .GroupBy(c => c.SpatialLocation ?? "未知位置") // 处理可能的空值
+                    .GroupBy(c => c.SpatialLocation ?? "未知位置")
                     .Select(g => new
                     {
                         Building = g.Key,
@@ -585,10 +613,20 @@ namespace UniAcamanageWpfApp.Controls
                     .OrderBy(g => g.Building)
                     .ToList();
 
+                // 输出分组信息
+                foreach (var group in groupedClassrooms)
+                {
+                    Debug.WriteLine($"建筑物: {group.Building}, 教室数量: {group.Classrooms.Count}");
+                    foreach (var classroom in group.Classrooms)
+                    {
+                        Debug.WriteLine($"  - 教室: {classroom.RoomNumber}, 楼层: {classroom.Floor}");
+                    }
+                }
+
                 listClassrooms.ItemsSource = groupedClassrooms;
 
                 // 更新地图显示
-                await webView.ExecuteScriptAsync("mapFunctions.resetHighlights();"); // 重置高亮显示
+                await webView.ExecuteScriptAsync("mapFunctions.resetHighlights();");
 
                 if (selectedBuilding != "全部")
                 {
@@ -601,8 +639,8 @@ namespace UniAcamanageWpfApp.Controls
             }
             catch (Exception ex)
             {
+                Debug.WriteLine($"处理建筑物选择改变时出错: {ex}");
                 MessageBox.Show($"加载教室数据失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                Debug.WriteLine($"教室数据加载错误: {ex}");
             }
         }
 
@@ -611,29 +649,36 @@ namespace UniAcamanageWpfApp.Controls
         {
             try
             {
+                Debug.WriteLine("开始初始化建筑物下拉列表");
+
                 // 清空当前项
                 cmbBuilding.ItemsSource = null;
                 cmbBuilding.Items.Clear();
 
                 if (_allClassrooms == null || !_allClassrooms.Any())
                 {
+                    Debug.WriteLine("没有教室数据可用于初始化建筑物列表");
                     return;
                 }
 
                 var buildings = new List<string> { "全部" };
-                buildings.AddRange(_allClassrooms
+                var distinctBuildings = _allClassrooms
                     .Where(c => !string.IsNullOrEmpty(c.SpatialLocation))
                     .Select(c => c.SpatialLocation)
                     .Distinct()
-                    .OrderBy(b => b));
+                    .OrderBy(b => b)
+                    .ToList();
+
+                Debug.WriteLine($"找到 {distinctBuildings.Count} 个不同的建筑物");
+                buildings.AddRange(distinctBuildings);
 
                 cmbBuilding.ItemsSource = buildings;
                 cmbBuilding.SelectedIndex = 0; // 默认选择"全部"
             }
             catch (Exception ex)
             {
+                Debug.WriteLine($"初始化建筑物列表时出错: {ex}");
                 MessageBox.Show($"初始化建筑物列表失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                Debug.WriteLine($"建筑物列表初始化错误: {ex}");
             }
         }
 
@@ -689,6 +734,20 @@ namespace UniAcamanageWpfApp.Controls
             }
         }
 
+        private async void BtnClearHighlight_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Debug.WriteLine("清除所有高亮显示");
+                await webView.ExecuteScriptAsync("mapFunctions.resetHighlights();");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"清除高亮显示时出错: {ex}");
+                MessageBox.Show("清除高亮显示失败", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private async void BtnZoomIn_Click(object sender, RoutedEventArgs e)
         {
             await webView.ExecuteScriptAsync("map.zoomIn();");
@@ -708,5 +767,438 @@ namespace UniAcamanageWpfApp.Controls
         {
             await webView.ExecuteScriptAsync("showAllClassrooms();");
         }
+
+        #endregion
+
+        #region 导航
+        // 选择起点
+        private bool isPickingStart = false;
+        private bool isPickingEnd = false;
+
+        private async void BtnPickStart_Click(object sender, RoutedEventArgs e)
+        {
+            isPickingStart = true;
+            isPickingEnd = false;
+            await webView.ExecuteScriptAsync("mapFunctions.startLocationPicking('start');");
+            MessageBox.Show("请在地图上点击选择起点位置", "提示");
+        }
+
+        private async void BtnPickEnd_Click(object sender, RoutedEventArgs e)
+        {
+            isPickingStart = false;
+            isPickingEnd = true;
+            await webView.ExecuteScriptAsync("mapFunctions.startLocationPicking('end');");
+            MessageBox.Show("请在地图上点击选择终点位置", "提示");
+        }
+
+        private async void CmbRouteType_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (cmbRouteType.SelectedItem != null)
+            {
+                string routeType = ((ComboBoxItem)cmbRouteType.SelectedItem).Content.ToString();
+                await webView.ExecuteScriptAsync($"mapFunctions.setRouteType('{routeType}');");
+            }
+        }
+
+        private async void BtnPlanRoute_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(txtStart.Text) || string.IsNullOrEmpty(txtEnd.Text))
+                {
+                    MessageBox.Show("请选择起点和终点", "提示");
+                    return;
+                }
+
+                // 调用 OSM 的导航服务
+                string routeType = ((ComboBoxItem)cmbRouteType.SelectedItem)?.Content.ToString() ?? "步行";
+                await webView.ExecuteScriptAsync($"mapFunctions.calculateRoute('{txtStart.Text}', '{txtEnd.Text}', '{routeType}');");
+
+                // 显示导航结果卡片
+                cardNavigationResult.Visibility = Visibility.Visible;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"规划路线失败: {ex.Message}", "错误");
+            }
+        }
+
+
+
+
+        private void WebView_WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            try
+            {
+                var message = JsonSerializer.Deserialize<Dictionary<string, object>>(e.WebMessageAsJson);
+                string messageType = message["type"].ToString();
+
+                switch (messageType)
+                {
+                    case "locationPicked":
+                        HandleLocationPicked(message);
+                        break;
+                    case "routeCalculated":
+                        HandleRouteCalculated(message);
+                        break;
+                    case "routeError":
+                        HandleRouteError(message);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"处理Web消息时出错: {ex}");
+            }
+        }
+
+        private void HandleLocationPicked(Dictionary<string, object> message)
+        {
+            string pickType = message["pickType"].ToString();
+            string coordinates = message["coordinates"].ToString();
+
+            Dispatcher.Invoke(() =>
+            {
+                if (pickType == "start")
+                {
+                    txtStart.Text = coordinates;
+                }
+                else if (pickType == "end")
+                {
+                    txtEnd.Text = coordinates;
+                }
+            });
+        }
+
+        // 修改处理方法
+        private void HandleRouteCalculated(Dictionary<string, object> message)
+        {
+            try
+            {
+                Debug.WriteLine("开始处理路线数据");
+
+                if (message == null || !message.ContainsKey("data"))
+                {
+                    throw new ArgumentNullException("message", "消息数据为空");
+                }
+
+                var jsonString = message["data"].ToString();
+                Debug.WriteLine($"接收到的数据: {jsonString}");
+
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    Converters = { new StepDistanceConverter() }
+                };
+
+                var routeInfo = JsonSerializer.Deserialize<AMapRouteResponse>(jsonString, options);
+
+                if (routeInfo?.Status != "1")
+                {
+                    throw new Exception($"路线规划失败: {routeInfo?.Info ?? "未知错误"}");
+                }
+
+                Dispatcher.Invoke(() =>
+                {
+                    // 显示导航结果卡片
+                    cardNavigationResult.Visibility = Visibility.Visible;
+
+                    // 更新距离显示
+                    if (int.TryParse(routeInfo.Route.Distance, out int distance))
+                    {
+                        txtDistance.Text = distance >= 1000
+                            ? $"总距离：{(distance / 1000.0):F2}公里"
+                            : $"总距离：{distance}米";
+                    }
+
+                    // 更新时间显示
+                    if (!string.IsNullOrEmpty(routeInfo.Route.Duration))
+                    {
+                        if (int.TryParse(routeInfo.Route.Duration, out int duration))
+                        {
+                            var timeSpan = TimeSpan.FromSeconds(duration);
+                            txtDuration.Text = FormatDuration(timeSpan);
+                        }
+                    }
+
+                    // 更新导航步骤列表
+                    var steps = routeInfo.Route.Steps.Select(step =>
+                    {
+                        // 使用 TryParse 来安全地解析数值
+                        int.TryParse(step.StepDistance ?? "0", out int stepDistance);
+                        int.TryParse(step.Duration ?? "0", out int stepDuration);
+
+                        return new RouteStep
+                        {
+                            Instruction = $"{step.Instruction} ({stepDistance}米)",
+                            Distance = stepDistance,
+                            Duration = stepDuration,
+                            Icon = GetDirectionIcon(step.Action ?? step.Instruction)
+                        };
+                    }).ToList();
+
+                    routeStepsList.ItemsSource = steps;
+                    Debug.WriteLine($"成功更新UI，显示了 {steps.Count} 个导航步骤");
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"处理路线数据时出错: {ex}");
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show($"处理导航数据时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
+        }
+
+        private string FormatDuration(TimeSpan duration)
+        {
+            if (duration.TotalHours >= 1)
+            {
+                return $"预计时间：{(int)duration.TotalHours}小时{duration.Minutes}分钟";
+            }
+            if (duration.Minutes > 0)
+            {
+                return duration.Seconds > 0
+                    ? $"预计时间：{duration.Minutes}分钟{duration.Seconds}秒"
+                    : $"预计时间：{duration.Minutes}分钟";
+            }
+            return $"预计时间：{duration.Seconds}秒";
+        }
+
+        // 更新方向图标获取方法
+        private string GetDirectionIcon(string instruction)
+        {
+            if (string.IsNullOrEmpty(instruction)) return "Navigation";
+
+            return instruction.ToLower() switch
+            {
+                var s when s.Contains("左转") => "ArrowLeft",
+                var s when s.Contains("右转") => "ArrowRight",
+                var s when s.Contains("直行") => "ArrowUpThick",
+                var s when s.Contains("到达目的地") => "MapMarkerCheck",
+                var s when s.Contains("出发") => "Play",
+                var s when s.Contains("向东") => "ArrowRight",
+                var s when s.Contains("向西") => "ArrowLeft",
+                var s when s.Contains("向南") => "ArrowDown",
+                var s when s.Contains("向北") => "ArrowUp",
+                _ => "Navigation"
+            };
+        }
+
+        // 添加对应的数据模型类
+        // 更新数据模型以匹配高德地图 V5 2.0 API
+        public class AMapRouteResponse
+        {
+            [JsonPropertyName("status")]
+            public string Status { get; set; }
+
+            [JsonPropertyName("info")]
+            public string Info { get; set; }
+
+            [JsonPropertyName("infocode")]
+            public string Infocode { get; set; }
+
+            [JsonPropertyName("count")]
+            public string Count { get; set; }
+
+            [JsonPropertyName("route")]
+            public RouteDetail Route { get; set; }
+        }
+
+        public class RouteDetail
+        {
+            [JsonPropertyName("distance")]
+            public string Distance { get; set; }
+
+            [JsonPropertyName("duration")]
+            public string Duration { get; set; }
+
+            [JsonPropertyName("steps")]
+            public List<StepDetail> Steps { get; set; }
+        }
+
+        public class StepDetail
+        {
+            [JsonPropertyName("instruction")]
+            public string Instruction { get; set; }
+
+            // 修改这里，使用可空类型和JsonConverter
+            [JsonPropertyName("step_distance")]
+            [JsonConverter(typeof(StepDistanceConverter))]
+            public string StepDistance { get; set; }
+
+            [JsonPropertyName("duration")]
+            public string Duration { get; set; }
+
+            [JsonPropertyName("orientation")]
+            public string Orientation { get; set; }
+
+            [JsonPropertyName("road_name")]
+            public string RoadName { get; set; }
+
+            [JsonPropertyName("action")]
+            public string Action { get; set; }
+
+            [JsonPropertyName("assistant_action")]
+            public string AssistantAction { get; set; }
+        }
+
+        // 添加自定义转换器来处理不同格式的距离值
+        public class StepDistanceConverter : JsonConverter<string>
+        {
+            public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                if (reader.TokenType == JsonTokenType.Number)
+                {
+                    return reader.GetInt32().ToString();
+                }
+                else if (reader.TokenType == JsonTokenType.String)
+                {
+                    return reader.GetString();
+                }
+                return "0";
+            }
+
+            public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options)
+            {
+                writer.WriteStringValue(value);
+            }
+        }
+
+        public class Cost
+        {
+            public string Duration { get; set; }
+        }
+
+        public class StepV5
+        {
+            public string Instruction { get; set; }
+            public string Orientation { get; set; }
+            public string RoadName { get; set; }
+            public string StepDistance { get; set; }
+            public string Duration { get; set; }
+            public string Action { get; set; }
+            public string AssistantAction { get; set; }
+            public string WalkType { get; set; }
+            public string Polyline { get; set; }
+        }
+
+        public class RouteStep : INotifyPropertyChanged
+        {
+            private string instruction;
+            private string icon;
+            private int distance;
+            private int duration;
+
+            public string Instruction
+            {
+                get => instruction;
+                set
+                {
+                    instruction = value;
+                    OnPropertyChanged(nameof(Instruction));
+                }
+            }
+
+            public string Icon
+            {
+                get => icon;
+                set
+                {
+                    icon = value;
+                    OnPropertyChanged(nameof(Icon));
+                }
+            }
+
+            public int Distance
+            {
+                get => distance;
+                set
+                {
+                    distance = value;
+                    OnPropertyChanged(nameof(Distance));
+                }
+            }
+
+            public int Duration
+            {
+                get => duration;
+                set
+                {
+                    duration = value;
+                    OnPropertyChanged(nameof(Duration));
+                }
+            }
+
+            public event PropertyChangedEventHandler PropertyChanged;
+            protected void OnPropertyChanged(string name)
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+            }
+        }
+
+            public event PropertyChangedEventHandler PropertyChanged;
+            protected void OnPropertyChanged(string name)
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+            }
+
+        private void RegisterWebViewHandler()
+        {
+            webView.WebMessageReceived += (s, e) =>
+            {
+                try
+                {
+                    var message = JsonSerializer.Deserialize<Dictionary<string, object>>(e.WebMessageAsJson);
+                    string messageType = message["type"].ToString();
+
+                    switch (messageType)
+                    {
+                        case "routeCalculated":
+                            HandleRouteCalculated(message);
+                            break;
+                        case "routeError":
+                            HandleRouteError(message);
+                            break;
+                            // ... 其他消息处理
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"处理Web消息时出错: {ex}");
+                }
+            };
+        }
+
+        private void HandleRouteError(Dictionary<string, object> message)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                MessageBox.Show(
+                    $"路线规划失败: {message["error"]}",
+                    "错误",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error
+                );
+            });
+        }
+
+        private async void BtnClearRoute_Click(object sender, RoutedEventArgs e)
+        {
+            // 隐藏导航结果卡片
+            cardNavigationResult.Visibility = Visibility.Collapsed;
+
+            // 清除导航步骤列表
+            routeStepsList.ItemsSource = null;
+
+            // 重置文本显示
+            txtDistance.Text = "总距离：--米";
+            txtDuration.Text = "预计时间：--分钟";
+
+            // 调用 JavaScript 清除地图上的路线
+            await webView.ExecuteScriptAsync("mapFunctions.clearRoute();");
+        }
+        #endregion 
     }
 }

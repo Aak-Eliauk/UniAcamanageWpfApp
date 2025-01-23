@@ -5,7 +5,6 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-             
              Background="#F5F9FF">
 
     <UserControl.Resources>
@@ -64,13 +63,13 @@
 
                                         <!-- 清除按钮 -->
                                         <Button x:Name="btnClearSearch"
-                    Grid.Column="2"
-                    Width="24"
-                    Height="24"
-                    Margin="5,0,0,0"
-                    Style="{StaticResource MaterialDesignIconButton}"
-                    Click="ClearSearch_Click"
-                    ToolTip="清除搜索">
+                                                Grid.Column="2"
+                                                Width="24"
+                                                Height="24"
+                                                Margin="5,0,0,0"
+                                                Style="{StaticResource MaterialDesignIconButton}"
+                                                Click="ClearSearch_Click"
+                                                ToolTip="清除搜索">
                                             <materialDesign:PackIcon Kind="Close" />
                                         </Button>
                                     </Grid>
@@ -118,60 +117,219 @@
 
                             <!-- 教室查询卡片 -->
                             <materialDesign:Card UniformCornerRadius="4">
-                                <StackPanel Margin="16">
-                                    <TextBlock Text="教室查询"
-                                             FontSize="16"
-                                             FontWeight="Medium"
-                                             Margin="0,0,0,16"/>
+                                <DockPanel Margin="16">
+                                    <Grid DockPanel.Dock="Top">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- 标题 -->
+                                        <TextBlock Text="教室查询"
+                                                  FontSize="16"
+                                                  FontWeight="Medium"
+                                                  Margin="0,0,0,16"/>
+
+                                        <!-- 清除高亮按钮 -->
+                                        <Button Grid.Column="1"
+                                                x:Name="btnClearHighlight"
+                                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                Click="BtnClearHighlight_Click"
+                                                ToolTip="清除所有高亮"
+                                                Margin="8,0,0,16">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="LayersClear" Margin="0,0,4,0"/>
+                                                <TextBlock Text="清除高亮"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
 
                                     <!-- 建筑选择 -->
                                     <ComboBox x:Name="cmbBuilding"
-                                            Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                            materialDesign:HintAssist.Hint="选择建筑"
-                                            SelectionChanged="CmbBuilding_SelectionChanged"
-                                            Margin="0,0,0,16"/>
+                                              DockPanel.Dock="Top"
+                                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                              materialDesign:HintAssist.Hint="选择建筑"
+                                              SelectionChanged="CmbBuilding_SelectionChanged"
+                                              Margin="0,0,0,16"/>
 
                                     <!-- 教室列表 -->
-                                    <ListView x:Name="listClassrooms"
-                                            MaxHeight="400"
-                                            ScrollViewer.VerticalScrollBarVisibility="Visible">
-                                        <ListView.ItemTemplate>
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                 HorizontalScrollBarVisibility="Disabled">
+                                        <ItemsControl x:Name="listClassrooms">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Expander Header="{Binding Building}" 
+                                                              Margin="0,0,0,4"
+                                                              IsExpanded="True">
+                                                        <ListView ItemsSource="{Binding Classrooms}"
+                                                                BorderThickness="0"
+                                                                MaxHeight="400">
+                                                            <ListView.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Grid Margin="8,4">
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="*"/>
+                                                                            <ColumnDefinition Width="Auto"/>
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <StackPanel>
+                                                                            <TextBlock>
+                                                                                <Run Text="{Binding RoomNumber}"/>
+                                                                                <Run Text=" ("/>
+                                                                                <Run Text="{Binding Floor}"/>
+                                                                                <Run Text="层)"/>
+                                                                            </TextBlock>
+                                                                            <TextBlock Text="{Binding Capacity, StringFormat=容量：{0}人}"
+                                                                                     FontSize="12"
+                                                                                     Foreground="{StaticResource SecondaryBrush}"/>
+                                                                        </StackPanel>
+                                                                        <Button Grid.Column="1"
+                                                                                Content="定位"
+                                                                                Click="BtnLocateClassroom_Click"
+                                                                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                                                Margin="8,0,0,0"/>
+                                                                    </Grid>
+                                                                </DataTemplate>
+                                                            </ListView.ItemTemplate>
+                                                        </ListView>
+                                                    </Expander>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </DockPanel>
+                            </materialDesign:Card>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- 导航模块 -->
+                <TabItem Header="导航" Style="{StaticResource MaterialDesignNavigationRailTabItem}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="16">
+                            <!-- 导航设置卡片 -->
+                            <materialDesign:Card Margin="0,0,0,16"
+                               UniformCornerRadius="4">
+                                <StackPanel Margin="16">
+                                    <TextBlock Text="路线规划"
+                             FontSize="16"
+                             FontWeight="Medium"
+                             Margin="0,0,0,16"/>
+
+                                    <!-- 起点设置 -->
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="txtStart"
+                                Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                materialDesign:HintAssist.Hint="起点"
+                                Margin="0,0,8,0"/>
+                                        <Button Grid.Column="1"
+                                x:Name="btnPickStart"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Click="BtnPickStart_Click"
+                                ToolTip="在地图上选择">
+                                            <materialDesign:PackIcon Kind="MapMarker"/>
+                                        </Button>
+                                    </Grid>
+
+                                    <!-- 终点设置 -->
+                                    <Grid Margin="0,0,0,16">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="txtEnd"
+                                Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                materialDesign:HintAssist.Hint="终点"
+                                Margin="0,0,8,0"/>
+                                        <Button Grid.Column="1"
+                                x:Name="btnPickEnd"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Click="BtnPickEnd_Click"
+                                ToolTip="在地图上选择">
+                                            <materialDesign:PackIcon Kind="MapMarkerCheck"/>
+                                        </Button>
+                                    </Grid>
+
+                                    <!-- 路线选项 -->
+                                    <ComboBox x:Name="cmbRouteType"
+                             Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                             materialDesign:HintAssist.Hint="出行方式"
+                             Margin="0,0,0,16"
+                             SelectionChanged="CmbRouteType_SelectionChanged">
+                                        <ComboBoxItem Content="步行"/>
+                                        <ComboBoxItem Content="骑行"/>
+                                    </ComboBox>
+
+                                    <!-- 规划按钮 -->
+                                    <Button x:Name="btnPlanRoute"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            Background="{StaticResource PrimaryBrush}"
+                            Click="BtnPlanRoute_Click"
+                            HorizontalAlignment="Stretch">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Navigation" Margin="0,0,8,0"/>
+                                            <TextBlock Text="开始导航"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </materialDesign:Card>
+
+                            <!-- 导航结果卡片 -->
+                            <materialDesign:Card UniformCornerRadius="4"
+                               x:Name="cardNavigationResult"
+                               Visibility="Collapsed">
+                                <StackPanel Margin="16">
+                                    <Grid Margin="0,0,0,16">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="导航详情"
+                                 FontSize="16"
+                                 FontWeight="Medium"/>
+                                        <Button Grid.Column="1"
+                                x:Name="btnClearRoute"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Click="BtnClearRoute_Click"
+                                ToolTip="清除路线">
+                                            <materialDesign:PackIcon Kind="Close"/>
+                                        </Button>
+                                    </Grid>
+
+                                    <!-- 路线信息 -->
+                                    <StackPanel x:Name="routeInfoPanel">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                            <materialDesign:PackIcon Kind="Clock" Margin="0,0,8,0"/>
+                                            <TextBlock x:Name="txtDuration" Text="预计时间：--分钟"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                            <materialDesign:PackIcon Kind="MapMarkerDistance" Margin="0,0,8,0"/>
+                                            <TextBlock x:Name="txtDistance" Text="总距离：--米"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- 导航步骤列表 -->
+                                    <ItemsControl x:Name="routeStepsList">
+                                        <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Expander Header="{Binding Building}">
-                                                    <ListView ItemsSource="{Binding Classrooms}"
-                                                            ScrollViewer.VerticalScrollBarVisibility="Auto">
-                                                        <ListView.ItemTemplate>
-                                                            <DataTemplate>
-                                                                <Grid Margin="8,4">
-                                                                    <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="*"/>
-                                                                        <ColumnDefinition Width="Auto"/>
-                                                                    </Grid.ColumnDefinitions>
-                                                                    <StackPanel>
-                                                                        <TextBlock>
-                                                                            <Run Text="{Binding RoomNumber}"/>
-                                                                            <Run Text=" ("/>
-                                                                            <Run Text="{Binding Floor}"/>
-                                                                            <Run Text="层)"/>
-                                                                        </TextBlock>
-                                                                        <TextBlock Text="{Binding Capacity, StringFormat=容量：{0}人}"
-                                                                                 FontSize="12"
-                                                                                 Foreground="{StaticResource SecondaryBrush}"/>
-                                                                    </StackPanel>
-                                                                    <Button x:Name="btnLocateClassroom"
-                                                                            Grid.Column="1"
-                                                                            Content="定位"
-                                                                            Click="BtnLocateClassroom_Click"
-                                                                            Style="{StaticResource MaterialDesignOutlinedButton}"
-                                                                            Margin="8,0,0,0"/>
-                                                                </Grid>
-                                                            </DataTemplate>
-                                                        </ListView.ItemTemplate>
-                                                    </ListView>
-                                                </Expander>
+                                                <Grid Margin="0,0,0,8">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <materialDesign:PackIcon Kind="{Binding Icon}"
+                                                           Margin="0,0,8,0"
+                                                           VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="1"
+                                             Text="{Binding Instruction}"
+                                             TextWrapping="Wrap"/>
+                                                </Grid>
                                             </DataTemplate>
-                                        </ListView.ItemTemplate>
-                                    </ListView>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                 </StackPanel>
                             </materialDesign:Card>
                         </StackPanel>
