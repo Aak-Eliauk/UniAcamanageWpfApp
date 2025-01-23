@@ -40,6 +40,9 @@ namespace UniAcamanageWpfApp.Controls
         private bool isMapInitialized = false;
         private readonly JsonSerializerOptions _jsonOptions;
         private readonly System.Timers.Timer _searchDebounceTimer;
+        private readonly DebounceDispatcher _generalSearchDebouncer = new DebounceDispatcher();
+        private readonly DebounceDispatcher _startSearchDebouncer = new DebounceDispatcher();
+        private readonly DebounceDispatcher _endSearchDebouncer = new DebounceDispatcher();
 
         public CampusMapControl()
         {
@@ -261,65 +264,18 @@ namespace UniAcamanageWpfApp.Controls
             }
         }
 
-        private async void TxtSearch_TextChanged(object sender, TextChangedEventArgs e)
+        private void TxtSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
-            _searchDebounceTimer.Stop();
-
-            string searchText = txtSearch.Text;
-            if (string.IsNullOrWhiteSpace(searchText))
-            {
-                searchResultsList.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            _searchDebounceTimer.Start();
+            _generalSearchDebouncer.Debounce(500, async () => await PerformSearch(txtSearch.Text));
         }
 
         private async Task PerformSearch(string searchText)
         {
             try
             {
-                var results = new List<SearchResult>();
+                var results = await GetSearchResults(searchText);
 
-                // 1. 搜索教室
-                var classroomResults = _allClassrooms
-                    .Where(c => c.RoomNumber.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                               c.SpatialLocation.Contains(searchText, StringComparison.OrdinalIgnoreCase))
-                    .Select(c => new SearchResult
-                    {
-                        DisplayName = $"{c.RoomNumber} ({c.SpatialLocation})",
-                        Category = "教室",
-                        IsClassroom = true,
-                        Classroom = c,
-                        IconKind = "School" // MaterialDesign 图标
-                    })
-                    .ToList();
-
-                results.AddRange(classroomResults);
-
-                // 2. 搜索 OSM 数据
-                var bbox = "114.3,30.4,114.7,30.5"; // 武汉未来城区域范围
-                var nominatimUrl = $"https://nominatim.openstreetmap.org/search" +
-                    $"?q={Uri.EscapeDataString(searchText)}" +
-                    $"&format=json" +
-                    $"&viewbox={bbox}" +
-                    $"&bounded=1" +
-                    $"&limit=10";
-
-                var response = await _httpClient.GetStringAsync(nominatimUrl);
-                var osmResults = JsonSerializer.Deserialize<List<NominatimResult>>(response);
-
-                results.AddRange(osmResults.Select(r => new SearchResult
-                {
-                    DisplayName = WebUtility.HtmlDecode(r.display_name),
-                    Category = TranslateOsmType(r.type),
-                    Latitude = double.Parse(r.lat, CultureInfo.InvariantCulture),
-                    Longitude = double.Parse(r.lon, CultureInfo.InvariantCulture),
-                    IsClassroom = false,
-                    IconKind = GetIconForOsmType(r.type)
-                }));
-
-                // 更新搜索结果列表
+                // 更新原有的搜索结果列表
                 searchResultsList.ItemsSource = results;
                 searchResultsList.Visibility = results.Any() ? Visibility.Visible : Visibility.Collapsed;
             }
@@ -328,6 +284,56 @@ namespace UniAcamanageWpfApp.Controls
                 Debug.WriteLine($"搜索失败: {ex.Message}");
                 MessageBox.Show("搜索时发生错误，请稍后重试", "搜索错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private async Task<List<SearchResult>> GetSearchResults(string searchText)
+        {
+            if (string.IsNullOrWhiteSpace(searchText))
+                return new List<SearchResult>();
+
+            var results = new List<SearchResult>();
+
+            // 1. 搜索教室
+            var classroomResults = _allClassrooms
+                .Where(c => c.RoomNumber.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                           c.SpatialLocation.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                .Select(c => new SearchResult
+                {
+                    DisplayName = $"{c.RoomNumber} ({c.SpatialLocation})",
+                    Category = "教室",
+                    IsClassroom = true,
+                    Classroom = c,
+                    IconKind = "School",
+                    Coordinates = GetClassroomCoordinates(c)
+                })
+                .ToList();
+
+            results.AddRange(classroomResults);
+
+            // 2. 搜索 OSM 数据
+            var bbox = "114.60,30.45,114.63,30.47"; // 武汉未来城区域范围
+            var nominatimUrl = $"https://nominatim.openstreetmap.org/search" +
+                $"?q={Uri.EscapeDataString(searchText)}" +
+                $"&format=json" +
+                $"&viewbox={bbox}" +
+                $"&bounded=1" +
+                $"&limit=10";
+
+            var response = await _httpClient.GetStringAsync(nominatimUrl);
+            var osmResults = JsonSerializer.Deserialize<List<NominatimResult>>(response);
+
+            results.AddRange(osmResults.Select(r => new SearchResult
+            {
+                DisplayName = WebUtility.HtmlDecode(r.display_name),
+                Category = TranslateOsmType(r.type),
+                Latitude = double.Parse(r.lat, CultureInfo.InvariantCulture),
+                Longitude = double.Parse(r.lon, CultureInfo.InvariantCulture),
+                IsClassroom = false,
+                IconKind = GetIconForOsmType(r.type),
+                Coordinates = $"{r.lat},{r.lon}"
+            }));
+
+            return results;
         }
 
         // OSM 类型转换为中文
@@ -376,6 +382,7 @@ namespace UniAcamanageWpfApp.Controls
             public bool IsClassroom { get; set; }
             public ClassroomSpatial Classroom { get; set; }
             public string IconKind { get; set; }
+            public string Coordinates { get; set; }
         }
 
         // 搜索结果选中处理
@@ -385,6 +392,9 @@ namespace UniAcamanageWpfApp.Controls
             {
                 try
                 {
+                    // 更新搜索框文本
+                    txtSearch.Text = result.DisplayName;
+
                     // 清除之前的搜索标记
                     await webView.ExecuteScriptAsync("mapFunctions.clearSearchMarkers();");
 
@@ -411,6 +421,7 @@ namespace UniAcamanageWpfApp.Controls
                 }
             }
         }
+
 
         private async Task AddSearchMarker(double lat, double lon, string title)
         {
@@ -1224,6 +1235,116 @@ namespace UniAcamanageWpfApp.Controls
             // 调用 JavaScript 清除地图上的路线
             await webView.ExecuteScriptAsync("mapFunctions.clearRoute();");
         }
+
+        public class DebounceDispatcher
+        {
+            private DispatcherTimer timer;
+
+            public void Debounce(int milliseconds, Action action)
+            {
+                timer?.Stop();
+                timer = new DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(milliseconds)
+                };
+
+                timer.Tick += (s, e) =>
+                {
+                    timer.Stop();
+                    action();
+                };
+
+                timer.Start();
+            }
+        }
+
+        private async Task PerformLocationSearch(string searchText, ListView resultsList, bool isStart)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(searchText))
+                {
+                    resultsList.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
+                var results = await GetSearchResults(searchText);
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    resultsList.ItemsSource = results;
+                    resultsList.Visibility = results.Any() ? Visibility.Visible : Visibility.Collapsed;
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"搜索失败: {ex.Message}");
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show("搜索时发生错误，请稍后重试", "搜索错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
+        }
+
+        private string GetClassroomCoordinates(ClassroomSpatial classroom)
+        {
+            // 从教室的几何数据中获取中心点坐标
+            var centroid = classroom.Shape.Centroid;
+            return $"{centroid.Y},{centroid.X}";
+        }
+
+        // 搜索框文本改变事件处理
+        private void TxtStartSearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            _startSearchDebouncer.Debounce(500, async () =>
+                await PerformLocationSearch(txtStartSearch.Text, startSearchResultsList, true));
+        }
+
+
+
+        private void TxtEndSearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            _endSearchDebouncer.Debounce(500, async () =>
+                await PerformLocationSearch(txtEndSearch.Text, endSearchResultsList, false));
+        }
+
+
+        // 搜索结果选择事件处理
+        private void StartSearchResults_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (startSearchResultsList.SelectedItem is SearchResult result)
+            {
+                txtStartSearch.Text = result.DisplayName;
+                txtStart.Text = result.Coordinates;
+                startSearchResultsList.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void EndSearchResults_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (endSearchResultsList.SelectedItem is SearchResult result)
+            {
+                txtEndSearch.Text = result.DisplayName;
+                txtEnd.Text = result.Coordinates;
+                endSearchResultsList.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        // 清除按钮事件处理
+        private void BtnClearStart_Click(object sender, RoutedEventArgs e)
+        {
+            txtStartSearch.Text = string.Empty;
+            txtStart.Text = string.Empty;
+            startSearchResultsList.Visibility = Visibility.Collapsed;
+        }
+
+        private void BtnClearEnd_Click(object sender, RoutedEventArgs e)
+        {
+            txtEndSearch.Text = string.Empty;
+            txtEnd.Text = string.Empty;
+            endSearchResultsList.Visibility = Visibility.Collapsed;
+        }
+
         #endregion 
     }
 }

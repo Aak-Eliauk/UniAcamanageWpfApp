@@ -903,9 +903,9 @@ BasedOn="{StaticResource MaterialDesignRaisedButton}">
                                                          materialDesign:HintAssist.Hint="课程类型"
                                                          Margin="0,0,16,0">
                                                     <ComboBoxItem Content="全部课程"/>
-                                                    <ComboBoxItem Content="必修课程"/>
-                                                    <ComboBoxItem Content="专业课程"/>
-                                                    <ComboBoxItem Content="选修课程"/>
+                                                    <ComboBoxItem Content="基础必修"/>
+                                                    <ComboBoxItem Content="专业必修"/>
+                                                    <ComboBoxItem Content="选修"/>
                                                 </ComboBox>
 
                                                 <ComboBox x:Name="CourseStatusComboBox"
