@@ -105,20 +105,28 @@
 
         <!-- 底部按钮 -->
         <StackPanel Grid.Row="2" 
-                    Orientation="Horizontal" 
-                    HorizontalAlignment="Right"
-                    Margin="16">
+            Orientation="Horizontal" 
+            HorizontalAlignment="Right"
+            Margin="16">
             <TextBlock x:Name="txtSelectedClassroom"
-                      VerticalAlignment="Center"
-                      Margin="0,0,16,0"
-                      FontSize="16"/>
+              VerticalAlignment="Center"
+              Margin="0,0,16,0"
+              FontSize="16"/>
+            <!-- 添加取消选择按钮 -->
+            <Button x:Name="btnClearSelection"
+                Content="取消选择"
+                Style="{StaticResource MaterialDesignOutlinedButton}"
+                Margin="8,0"
+                Click="BtnClearSelection_Click"
+                Visibility="Collapsed"/>
             <Button Content="取消"
-                    Style="{StaticResource MaterialDesignOutlinedButton}"
-                    Margin="8,0"
-                    Click="BtnCancel_Click"/>
+            Style="{StaticResource MaterialDesignOutlinedButton}"
+            Margin="8,0"
+            Click="BtnCancel_Click"/>
             <Button Content="确定"
-                    Style="{StaticResource MaterialDesignRaisedButton}"
-                    Click="BtnConfirm_Click"/>
+            Style="{StaticResource MaterialDesignRaisedButton}"
+            Click="BtnConfirm_Click"/>
         </StackPanel>
+        
     </Grid>
 </Window>

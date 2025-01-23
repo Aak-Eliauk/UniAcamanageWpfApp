@@ -66,8 +66,50 @@ namespace UniAcamanageWpfApp.Windows
                 isMapInitialized = true;
                 await Task.Delay(500);
                 await LoadAllClassrooms();
+
+                // 添加消息处理
+                webView.WebMessageReceived += WebView_WebMessageReceived;
             }
         }
+
+        private async void WebView_WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            try
+            {
+                Debug.WriteLine($"Received message: {e.WebMessageAsJson}");
+                var message = System.Text.Json.JsonSerializer.Deserialize<WebViewMessage>(e.WebMessageAsJson);
+
+                if (message?.type == "classroom-selected" && message.classroom != null)
+                {
+                    var classroom = await _context.ClassroomSpatials
+                        .FirstOrDefaultAsync(c => c.ClassroomID == message.classroom.classroomID);
+
+                    if (classroom != null)
+                    {
+                        await Dispatcher.InvokeAsync(() =>
+                        {
+                            _selectedClassroom = classroom;
+                            txtSelectedClassroom.Text = $"已选择: {classroom.RoomNumber} ({classroom.SpatialLocation})";
+                            btnClearSelection.Visibility = Visibility.Visible;
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"处理WebView消息时出错: {ex.Message}");
+                Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
+            }
+        }
+
+        private async void BtnClearSelection_Click(object sender, RoutedEventArgs e)
+        {
+            _selectedClassroom = null;
+            txtSelectedClassroom.Text = "";
+            btnClearSelection.Visibility = Visibility.Collapsed; // 隐藏取消选择按钮
+            await webView.ExecuteScriptAsync("mapFunctions.resetHighlights();");
+        }
+
 
         private async Task LoadAllClassrooms()
         {
@@ -117,6 +159,8 @@ namespace UniAcamanageWpfApp.Windows
             }
         }
 
+
+
         private async void TxtSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
             _searchDebouncer.Debounce(500, async () =>
@@ -151,6 +195,7 @@ namespace UniAcamanageWpfApp.Windows
             {
                 _selectedClassroom = result.Classroom;
                 txtSelectedClassroom.Text = $"已选择: {result.DisplayName}";
+                btnClearSelection.Visibility = Visibility.Visible; // 显示取消选择按钮
                 searchResultsList.Visibility = Visibility.Collapsed;
                 txtSearch.Text = result.DisplayName;
 
@@ -171,6 +216,7 @@ namespace UniAcamanageWpfApp.Windows
                 Debug.WriteLine($"高亮显示教室失败: {ex}");
             }
         }
+
 
         private void BtnCancel_Click(object sender, RoutedEventArgs e)
         {
@@ -206,6 +252,25 @@ namespace UniAcamanageWpfApp.Windows
         {
             await webView.ExecuteScriptAsync("mapFunctions.resetView();");
         }
+
+
+        // WebView消息类
+        private class WebViewMessage
+        {
+            public string type { get; set; }
+            public ClassroomInfo classroom { get; set; }
+        }
+
+        private class ClassroomInfo
+        {
+            public int classroomID { get; set; }
+            public string roomNumber { get; set; }
+            public string spatialLocation { get; set; }
+            public int floor { get; set; }
+            public int capacity { get; set; }
+        }
+
+        
     }
 
     public class SearchResult
@@ -215,4 +280,6 @@ namespace UniAcamanageWpfApp.Windows
         public string IconKind { get; set; }
         public ClassroomSpatial Classroom { get; set; }
     }
+
+
 }

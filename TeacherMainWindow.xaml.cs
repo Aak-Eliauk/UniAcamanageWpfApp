@@ -7,6 +7,7 @@ using UniAcamanageWpfApp.Models;
 using UniAcamanageWpfApp.Views;
 using Microsoft.Data.SqlClient;
 using System.Configuration;
+using UniAcamanageWpfApp.Controls;
 
 namespace UniAcamanageWpfApp
 {
@@ -160,6 +161,9 @@ namespace UniAcamanageWpfApp
                     case "BtnGradeManage":
                         // 切换到 GradeManagementView
                         MainContentPresenter.Content = new GradeManagementView();
+                        break;
+                    case "BtnMap":
+                        MainContentPresenter.Content = new CampusMapControl();
                         break;
                     case "BtnSpatialDataManage":
                         if (GlobalUserState.Role == "Admin")
