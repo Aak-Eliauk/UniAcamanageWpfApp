@@ -138,10 +138,27 @@
                          materialDesign:HintAssist.Hint="课程容量"
                          materialDesign:HintAssist.HelperText="请输入整数"/>
 
-                <!-- 教室 -->
-                <ComboBox x:Name="cmbClassroom"
-                          Style="{StaticResource CommonComboBoxStyle}"
-                          materialDesign:HintAssist.Hint="教室"/>
+                <!-- 教室选择 -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <ComboBox x:Name="cmbClassroom"
+              Grid.Column="0"
+              Style="{StaticResource CommonComboBoxStyle}"
+              materialDesign:HintAssist.Hint="教室" 
+              />
+
+                    <Button Grid.Column="1"
+            Margin="8,8,0,16"
+            Style="{StaticResource MaterialDesignOutlinedButton}"
+            ToolTip="在地图上选择"
+            Click="BtnMapSelect_Click">
+                        <materialDesign:PackIcon Kind="MapMarker"/>
+                    </Button>
+                </Grid>
 
                 <!-- 学期 -->
                 <ComboBox x:Name="cmbSemester"

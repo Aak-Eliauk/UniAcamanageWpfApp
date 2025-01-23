@@ -388,7 +388,7 @@
                                 Grid.Column="1"
                                 Margin="10">
                     <!-- 默认：首页 -->
-                    <Views:HomeView/>
+                    <Views:HomePageView/>
                 </ContentControl>
             </Grid>
 

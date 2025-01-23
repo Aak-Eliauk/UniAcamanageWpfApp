@@ -1,0 +1,232 @@
+﻿<UserControl x:Class="UniAcamanageWpfApp.Views.HomePageView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             mc:Ignorable="d"
+             d:DesignHeight="900" 
+             d:DesignWidth="1200">
+
+    <UserControl.Resources>
+        <!-- 基础颜色 -->
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#3A76D2"/>
+        <SolidColorBrush x:Key="SecondaryBrush" Color="#2B5CA6"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#007ACC"/>
+
+        <!-- 数据卡片样式 -->
+        <Style x:Key="DataCardStyle" TargetType="materialDesign:Card">
+            <Setter Property="Margin" Value="8"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="materialDesign:ElevationAssist.Elevation" Value="Dp1"/>
+            <Setter Property="UniformCornerRadius" Value="8"/>
+        </Style>
+
+        <!-- ComboBox样式 -->
+        <Style x:Key="CommonComboBoxStyle" 
+           TargetType="ComboBox" 
+           BasedOn="{StaticResource MaterialDesignOutlinedComboBox}">
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Padding" Value="12,8,12,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="materialDesign:TextFieldAssist.TextFieldCornerRadius" Value="4"/>
+            <Setter Property="materialDesign:TextFieldAssist.UnderlineBrush" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="materialDesign:HintAssist.FloatingScale" Value="0.85"/>
+            <Setter Property="materialDesign:HintAssist.FloatingOffset" Value="0,-18"/>
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <!-- 欢迎区域 -->
+                <RowDefinition Height="*"/>
+                <!-- 主要内容区域 -->
+            </Grid.RowDefinitions>
+
+            <!-- 欢迎区域 -->
+            <materialDesign:Card Grid.Row="0" 
+                               Style="{StaticResource DataCardStyle}"
+                               Margin="0,0,0,20">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 左侧信息区域 -->
+                    <materialDesign:Card Grid.Column="0"
+                                       Background="{StaticResource PrimaryBrush}"
+                                       Margin="0,0,10,0"
+                                       UniformCornerRadius="8"
+                                       Padding="20">
+                        <StackPanel>
+                            <TextBlock x:Name="WelcomeText"
+                                     FontSize="28"
+                                     FontWeight="Bold"
+                                     Foreground="White"/>
+                            <TextBlock x:Name="SubWelcomeText"
+                                     Text="欢迎使用教务管理系统"
+                                     FontSize="16"
+                                     Foreground="White"
+                                     Opacity="0.8"
+                                     Margin="0,5,0,0"/>
+                            <TextBlock x:Name="SemesterInfo"
+                                     Margin="0,20,0,0"
+                                     FontSize="14"
+                                     Foreground="White"
+                                     Opacity="0.9"/>
+                        </StackPanel>
+                    </materialDesign:Card>
+
+                    <!-- 右侧时钟区域 -->
+                    <materialDesign:Card Grid.Column="1"
+                                       Background="White"
+                                       UniformCornerRadius="8"
+                                       Padding="20">
+                        <StackPanel Width="200">
+                            <TextBlock x:Name="TimeText"
+                                     FontSize="36"
+                                     FontWeight="Bold"
+                                     Foreground="{StaticResource PrimaryBrush}"
+                                     HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="DateText"
+                                     FontSize="16"
+                                     Foreground="#666666"
+                                     HorizontalAlignment="Center"
+                                     Margin="0,5,0,0"/>
+                            <Separator Margin="0,10"/>
+                            <TextBlock x:Name="WeekInfo"
+                                     FontSize="14"
+                                     Foreground="#666666"
+                                     HorizontalAlignment="Center"
+                                     Margin="0,5,0,0"/>
+                        </StackPanel>
+                    </materialDesign:Card>
+                </Grid>
+            </materialDesign:Card>
+
+            <!-- 主要内容区域 -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- 左侧课表 -->
+                <materialDesign:Card Grid.Column="0"
+                                   Style="{StaticResource DataCardStyle}"
+                                   Margin="0,0,10,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- 课表工具栏 -->
+                        <DockPanel Grid.Row="0" 
+                                 LastChildFill="False" 
+                                 Margin="0,0,0,16">
+                            <TextBlock Text="本周课表"
+                                     FontSize="18"
+                                     FontWeight="SemiBold"
+                                     VerticalAlignment="Center"/>
+
+                            <ComboBox Width="120"
+                                     DockPanel.Dock="Right"
+                                     Style="{StaticResource CommonComboBoxStyle}"
+                                     materialDesign:HintAssist.Hint="切换周次"
+                                     x:Name="WeekSelector"/>
+                        </DockPanel>
+
+                        <!-- 课表内容 -->
+                        <Grid Grid.Row="1" 
+                              x:Name="CourseScheduleGrid"
+                              Background="White">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="40"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="60"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                        </Grid>
+                    </Grid>
+                </materialDesign:Card>
+
+                <!-- 右侧信息栏 -->
+                <Grid Grid.Column="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 通知公告 -->
+                    <materialDesign:Card Grid.Row="0"
+                                       Style="{StaticResource DataCardStyle}"
+                                       Margin="0,0,0,10">
+                        <StackPanel>
+                            <DockPanel LastChildFill="False" 
+                                     Margin="0,0,0,16">
+                                <TextBlock Text="通知公告"
+                                         FontSize="18"
+                                         FontWeight="SemiBold"/>
+                                <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                        Content="查看全部"
+                                        DockPanel.Dock="Right"/>
+                            </DockPanel>
+
+                            <TextBlock Text="暂无通知公告"
+                                     Foreground="#666666"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Margin="0,20,0,0"/>
+                        </StackPanel>
+                    </materialDesign:Card>
+
+                    <!-- 待办事项 -->
+                    <materialDesign:Card Grid.Row="1"
+                                       Style="{StaticResource DataCardStyle}"
+                                       Margin="0,10,0,0">
+                        <StackPanel>
+                            <DockPanel LastChildFill="False" 
+                                     Margin="0,0,0,16">
+                                <TextBlock Text="待办事项"
+                                         FontSize="18"
+                                         FontWeight="SemiBold"/>
+                                <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                        Content="查看全部"
+                                        DockPanel.Dock="Right"/>
+                            </DockPanel>
+
+                            <TextBlock Text="暂无待办事项"
+                                     Foreground="#666666"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Margin="0,20,0,0"/>
+                        </StackPanel>
+                    </materialDesign:Card>
+                </Grid>
+            </Grid>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

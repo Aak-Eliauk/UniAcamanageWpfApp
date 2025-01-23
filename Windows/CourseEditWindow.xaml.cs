@@ -243,6 +243,25 @@ namespace UniAcamanageWpfApp.Windows
             }
         }
 
+        private void BtnMapSelect_Click(object sender, RoutedEventArgs e)
+        {
+            var selectorWindow = new ClassroomSelectorWindow();
+            if (selectorWindow.ShowDialog() == true)
+            {
+                string selectedClassroomNumber = selectorWindow.SelectedClassroomNumber;
+
+                // 从 ComboBox 的 DataTable 数据源中查找对应的教室
+                foreach (DataRowView row in cmbClassroom.Items)
+                {
+                    if (row["RoomNumber"].ToString() == selectedClassroomNumber)
+                    {
+                        cmbClassroom.SelectedItem = row;
+                        break;
+                    }
+                }
+            }
+        }
+
         private void DeleteTimeSlot_Click(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;

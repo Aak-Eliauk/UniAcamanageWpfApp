@@ -257,21 +257,21 @@
                 // 添加底图
                 const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 20,
-                    attribution: '© OpenStreetMap contributors'
+                    attribution: '© OpenStreetMap contributors 朱治锦'
                 }).addTo(MapState.map);
 
                 // 高德地图图层
                 const gaodeLayer = L.tileLayer(`https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}&key=${GAODE_KEY}`, {
                     subdomains: ["1", "2", "3", "4"],
                     maxZoom: 19,
-                    attribution: '© 高德地图'
+                    attribution: '© 高德地图 朱治锦'
                 });
 
                 // 高德卫星图层
                 const gaodeSatelliteLayer = L.tileLayer(`https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}&key=${GAODE_KEY}`, {
                     subdomains: ["1", "2", "3", "4"],
                     maxZoom: 19,
-                    attribution: '© 高德卫星图'
+                    attribution: '© 高德卫星图 朱治锦'
                 });
 
                 // 天地图图层配置

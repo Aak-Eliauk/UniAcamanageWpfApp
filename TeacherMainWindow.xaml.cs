@@ -143,7 +143,7 @@ namespace UniAcamanageWpfApp
                 {
                     case "BtnHome":
                         // 切换到 HomeView
-                        MainContentPresenter.Content = new HomeView();
+                        MainContentPresenter.Content = new HomePageView();
                         break;
                     case "BtnInfoQuery":
                         // 切换到 TeacherInfoView
