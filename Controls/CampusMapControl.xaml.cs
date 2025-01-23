@@ -870,7 +870,7 @@ namespace UniAcamanageWpfApp.Controls
             });
         }
 
-        // 修改处理方法
+        // 路线处理方法
         private void HandleRouteCalculated(Dictionary<string, object> message)
         {
             try
@@ -909,6 +909,14 @@ namespace UniAcamanageWpfApp.Controls
                         txtDistance.Text = distance >= 1000
                             ? $"总距离：{(distance / 1000.0):F2}公里"
                             : $"总距离：{distance}米";
+
+                        // 如果没有耗时数据，根据距离估算耗时（假设平均速度12km/h）
+                        if (string.IsNullOrEmpty(routeInfo.Route.Duration) ||
+                            routeInfo.Route.Duration == "0")
+                        {
+                            routeInfo.Route.Duration =
+                                Math.Round((distance / 12000.0) * 3600).ToString();
+                        }
                     }
 
                     // 更新时间显示
@@ -924,9 +932,13 @@ namespace UniAcamanageWpfApp.Controls
                     // 更新导航步骤列表
                     var steps = routeInfo.Route.Steps.Select(step =>
                     {
-                        // 使用 TryParse 来安全地解析数值
                         int.TryParse(step.StepDistance ?? "0", out int stepDistance);
-                        int.TryParse(step.Duration ?? "0", out int stepDuration);
+
+                        // 如果步骤没有持续时间，根据距离估算
+                        if (!int.TryParse(step.Duration ?? "0", out int stepDuration))
+                        {
+                            stepDuration = (int)Math.Round((stepDistance / 12000.0) * 3600);
+                        }
 
                         return new RouteStep
                         {
@@ -951,19 +963,32 @@ namespace UniAcamanageWpfApp.Controls
             }
         }
 
+        // 优化时间格式化方法
         private string FormatDuration(TimeSpan duration)
         {
+            var parts = new List<string>();
+
             if (duration.TotalHours >= 1)
             {
-                return $"预计时间：{(int)duration.TotalHours}小时{duration.Minutes}分钟";
+                parts.Add($"{(int)duration.TotalHours}小时");
             }
+
             if (duration.Minutes > 0)
             {
-                return duration.Seconds > 0
-                    ? $"预计时间：{duration.Minutes}分钟{duration.Seconds}秒"
-                    : $"预计时间：{duration.Minutes}分钟";
+                parts.Add($"{duration.Minutes}分钟");
             }
-            return $"预计时间：{duration.Seconds}秒";
+
+            if (duration.Seconds > 0 && duration.TotalHours < 1)
+            {
+                parts.Add($"{duration.Seconds}秒");
+            }
+
+            if (!parts.Any())
+            {
+                return "预计时间：不到1分钟";
+            }
+
+            return "预计时间：" + string.Join("", parts);
         }
 
         // 更新方向图标获取方法

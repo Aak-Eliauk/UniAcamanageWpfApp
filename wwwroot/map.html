@@ -877,8 +877,17 @@
                             count: data.count,
                             route: {
                                 distance: path.distance,
-                                duration: path.cost?.duration || "0",
-                                steps: steps
+                                // 骑行API中，duration可能在不同位置，需要依次检查
+                                duration: path.duration ||
+                                    (path.cost && path.cost.duration) ||
+                                    // 预估骑行时间：按照普通人骑行速度12km/h计算
+                                    Math.round((parseInt(path.distance) / 12000) * 3600).toString(),
+                                steps: steps.map(step => ({
+                                    ...step,
+                                    // 确保每个步骤都有持续时间
+                                    duration: step.duration ||
+                                        Math.round((parseInt(step.step_distance) / 12000) * 3600).toString()
+                                }))
                             }
                         };
 
