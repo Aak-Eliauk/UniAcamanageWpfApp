@@ -9,7 +9,13 @@
         Height="700" 
         Width="1000"
         WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource MaterialDesignPaper}">
+        >
+
+    <Window.Background>
+        <ImageBrush ImageSource="../Resources/Images/Background.png"
+                    Stretch="Fill"
+                    />
+    </Window.Background>
 
     <Grid Margin="20">
         <Grid.RowDefinitions>

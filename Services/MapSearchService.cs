@@ -90,7 +90,7 @@ namespace UniAcamanageWpfApp.Services
 
                 // 构建 Overpass QL 查询
                 var query = "[out:json][timeout:25];" +
-                           $"area[name=\"武汉大学\"]->.searchArea;" +
+                           $"area[name=\"中国地质大学未来城校区\"]->.searchArea;" +
                            "(" +
                            string.Join("", keywords.Select(k =>
                                $"way[\"name\"~\"{k}\"][\"building\"](area.searchArea);" +
